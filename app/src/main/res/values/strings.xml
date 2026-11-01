@@ -1,0 +1,4 @@
+<resources>
+    <string name="portion_calories">%1$s ккал в порции</string>
+    <string name="camera_error">Камера недоступна: %1$s</string>
+</resources>

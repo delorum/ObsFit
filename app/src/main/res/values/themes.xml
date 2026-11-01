@@ -1,0 +1,19 @@
+<resources>
+    <style name="Theme.ObsFit" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#1E232A</item>
+        <item name="android:colorBackground">#1E232A</item>
+        <item name="android:textColorPrimary">#E6E7EC</item>
+        <item name="android:textColorSecondary">#A0ABBD</item>
+        <item name="colorPrimary">#B5A3E8</item>
+        <item name="colorPrimaryVariant">#2B3240</item>
+        <item name="colorOnPrimary">#1E232A</item>
+        <item name="colorSecondary">#B5A3E8</item>
+        <item name="colorSurface">#282E38</item>
+        <item name="colorOnSurface">#E6E7EC</item>
+        <item name="android:colorAccent">#B5A3E8</item>
+    </style>
+</resources>
