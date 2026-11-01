@@ -20,6 +20,9 @@ public class MealPlanTest {
   @Test
   public void scheduleMatchesSevenRequestedWindowsAnd2600Calories() {
     assertEquals(7, MealPlan.SLOTS.size());
+    assertEquals(
+        List.of(500, 100, 650, 100, 600, 550, 100),
+        MealPlan.SLOTS.stream().map(MealPlan.Slot::calories).toList());
     assertEquals(2600, MealPlan.SLOTS.stream().mapToInt(MealPlan.Slot::calories).sum());
     assertEquals(
         List.of("09:00", "11:00", "13:00", "15:00", "17:00", "19:00", "21:00"),
@@ -35,28 +38,28 @@ public class MealPlanTest {
     var a = at("08:00");
     assertNull(a.now());
     assertEquals(0, a.available());
-    assertEquals(750, a.nextCalories());
+    assertEquals(500, a.nextCalories());
     assertEquals(DAY.atTime(9, 0), a.nextAt());
   }
 
   @Test
   public void openingBoundaryIsIncludedAndClosingBoundaryIsExcluded() {
-    assertEquals(750, at("09:00").available());
-    assertEquals(750, at("09:59:59").available());
+    assertEquals(500, at("09:00").available());
+    assertEquals(500, at("09:59:59").available());
     assertNull(at("10:00").now());
     assertEquals(DAY.atTime(11, 0), at("10:00").nextAt());
   }
 
   @Test
   public void currentMealConsumptionIsSubtractedImmediately() {
-    var a = at("09:30", eaten("Завтрак", 600));
+    var a = at("09:30", eaten("Завтрак", 350));
     assertEquals(150, a.available());
     assertEquals("Завтрак", a.now().name());
   }
 
   @Test
   public void fullCurrentMealShowsNextMealInsteadOfMoreCalories() {
-    var a = at("09:30", eaten("Завтрак", 750));
+    var a = at("09:30", eaten("Завтрак", 500));
     assertEquals(0, a.available());
     assertEquals(DAY.atTime(11, 0), a.nextAt());
     assertEquals(100, a.nextCalories());
@@ -65,27 +68,27 @@ public class MealPlanTest {
   @Test
   public void missedBreakfastIsCarriedEquallyToSixRemainingMeals() {
     var a = at("11:00");
-    assertEquals(225, a.available());
-    assertEquals(675, a.nextCalories());
+    assertEquals(100 + 500d / 6, a.available(), 1);
+    assertEquals(650 + 500d / 6, a.nextCalories(), 1);
   }
 
   @Test
   public void breakfastOverspendReducesAllRemainingMealsEqually() {
-    var a = at("11:00", eaten("Завтрак", 900));
+    var a = at("11:00", eaten("Завтрак", 650));
     assertEquals(75, a.available());
-    assertEquals(525, a.nextCalories());
+    assertEquals(625, a.nextCalories());
   }
 
   @Test
   public void exhaustedCurrentBudgetIsZeroAndOverspendMovesForward() {
-    var a = at("09:30", eaten("Завтрак", 1050));
+    var a = at("09:30", eaten("Завтрак", 800));
     assertEquals(0, a.available());
     assertEquals(50, a.nextCalories());
   }
 
   @Test
   public void canSkipAFutureMealWhoseRemainingBudgetIsAlreadyZero() {
-    var a = at("09:30", eaten("Завтрак", 1500));
+    var a = at("09:30", eaten("Завтрак", 1250));
     assertEquals(0, a.available());
     assertEquals("Обед", a.next().name());
     assertEquals(DAY.atTime(13, 0), a.nextAt());
@@ -93,26 +96,26 @@ public class MealPlanTest {
 
   @Test
   public void filledFutureMainSectionIsNotAllocatedTwice() {
-    var a = at("11:00", eaten("Завтрак", 750), eaten("Обед", 550));
+    var a = at("11:00", eaten("Завтрак", 500), eaten("Обед", 650));
     assertEquals(100, a.available());
     assertEquals(DAY.atTime(15, 0), a.nextAt());
   }
 
   @Test
   public void snacksWithoutTimesAreFilledChronologically() {
-    var a = at("15:30", eaten("Завтрак", 750), eaten("Обед", 550), eaten("Перекусы", 100));
+    var a = at("15:30", eaten("Завтрак", 500), eaten("Обед", 650), eaten("Перекусы", 100));
     assertEquals(100, a.available());
     assertTrue(a.approximate());
-    var b = at("15:30", eaten("Завтрак", 750), eaten("Обед", 550), eaten("Перекусы", 150));
+    var b = at("15:30", eaten("Завтрак", 500), eaten("Обед", 650), eaten("Перекусы", 150));
     assertEquals(50, b.available());
   }
 
   @Test
   public void notesCountTowardCurrentMealAndAreMarkedApproximate() {
-    var a = at("09:30", eaten("Заметки", 600));
+    var a = at("09:30", eaten("Заметки", 350));
     assertEquals(150, a.available());
     assertTrue(a.approximate());
-    var b = at("10:30", eaten("Заметки", 750));
+    var b = at("10:30", eaten("Заметки", 500));
     assertEquals(100, b.nextCalories());
   }
 
@@ -130,10 +133,10 @@ public class MealPlanTest {
     var a =
         at(
             "21:30",
-            eaten("Завтрак", 750),
-            eaten("Обед", 550),
-            eaten("Второй обед", 500),
-            eaten("Ужин", 500),
+            eaten("Завтрак", 500),
+            eaten("Обед", 650),
+            eaten("Второй обед", 600),
+            eaten("Ужин", 550),
             eaten("Перекусы", 200));
     assertEquals(100, a.available());
     var b = at("22:00");
