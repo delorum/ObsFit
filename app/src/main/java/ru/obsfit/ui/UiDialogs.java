@@ -57,7 +57,7 @@ public final class UiDialogs {
         .show();
   }
 
-  public void calories(PortionForm form, Runnable confirm) {
+  public void calories(PortionForm form, Runnable confirm, Runnable closed) {
     LinearLayout fields = ui.column();
     fields.setPadding(ui.dp(20), ui.dp(12), ui.dp(20), 0);
     EditText description = ui.field(fields, "Описание (необязательно)", form.name, false, true);
@@ -106,6 +106,7 @@ public final class UiDialogs {
                       dialog.dismiss();
                       confirm.run();
                     }));
+    dialog.setOnDismissListener(ignored -> closed.run());
     dialog.show();
     if (form.name.isBlank()) kcal.requestFocus();
   }

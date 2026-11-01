@@ -53,20 +53,20 @@ public final class PortionScreen {
     ui.body.addView(ui.button("‹  Назад к дню", actions::back));
     ui.gap(ui.body, 12);
     LinearLayout mode = ui.row();
-    ui.weighted(
-        mode,
-        ui.button(
-            "Из справочника",
-            () -> {
-              actions.chooseFromCatalog();
-            }));
-    ui.weighted(
-        mode,
-        ui.button(
-            "＋ Новая еда",
-            () -> {
-              actions.newFood();
-            }));
+    if (form.entry == null) {
+      ui.weighted(
+          mode,
+          ui.button(
+              form.choosing ? "＋ Новая еда" : "Из справочника",
+              () -> {
+                if (form.choosing) actions.newFood();
+                else actions.chooseFromCatalog();
+              }));
+      ui.weighted(mode, ui.button("＋ ккал", actions::manualCalories));
+    } else {
+      ui.weighted(mode, ui.button("Из справочника", actions::chooseFromCatalog));
+      ui.weighted(mode, ui.button("＋ Новая еда", actions::newFood));
+    }
     ui.body.addView(mode);
     ui.gap(ui.body, 12);
     if (form.choosing) choices();

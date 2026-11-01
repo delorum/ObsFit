@@ -44,10 +44,6 @@ public final class ScreenRenderer {
       case PORTION -> {
         title = state.portion.entry == null ? "Добавить еду" : "Редактировать";
         subtitle = state.portion.section + " · " + state.selected;
-        if (state.portion.entry == null)
-          toolbar.add(
-              new Ui.Action(
-                  "ккал", "Добавить калории без веса и справочника", actions::manualCalories));
       }
       case CATALOG -> {
         title = "Справочник";

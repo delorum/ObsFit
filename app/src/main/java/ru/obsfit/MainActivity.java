@@ -446,14 +446,16 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     if (current.manual) manual = PortionForm.restore(current.original, current.draft());
     else manual.startManual();
     PortionForm draft = manual;
+    state.portion = draft;
+    state.pendingBarcode = null;
+    redraw();
     dialogs.calories(
         draft,
         () -> {
-          if (state.busy || state.portion != current) return;
-          controller.state.portion = draft;
-          state.pendingBarcode = null;
-          redraw();
-          savePortion();
+          if (!state.busy && state.portion == draft) savePortion();
+        },
+        () -> {
+          if (!isDestroyed() && !state.busy && state.portion == draft) redraw();
         });
   }
 
