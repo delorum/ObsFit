@@ -438,6 +438,25 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   @Override
+  public void manualCalories() {
+    if (state.busy || state.portion == null || state.portion.entry != null) return;
+    PortionForm current = state.portion;
+    PortionForm manual = new PortionForm(current.original, current.section, null);
+    if (current.manual) manual = PortionForm.restore(current.original, current.draft());
+    else manual.startManual();
+    PortionForm draft = manual;
+    dialogs.calories(
+        draft,
+        () -> {
+          if (state.busy || state.portion != current) return;
+          controller.state.portion = draft;
+          state.pendingBarcode = null;
+          redraw();
+          savePortion();
+        });
+  }
+
+  @Override
   public void savePortion() {
     if (state.busy || state.portion == null) return;
     PortionForm form = state.portion;
@@ -450,7 +469,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
             return repo.load(form.original.note);
           },
           day -> {
-            if (form.entry == null)
+            if (form.entry == null && !form.manual)
               prefs
                   .edit()
                   .putLong(

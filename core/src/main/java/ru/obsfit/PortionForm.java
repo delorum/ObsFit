@@ -86,6 +86,21 @@ public final class PortionForm {
     dirty = false;
   }
 
+  public void startManual() {
+    selectedFood = null;
+    newFood = false;
+    manual = true;
+    choosing = false;
+    aliasesExpanded = false;
+    name = "";
+    aliases = "";
+    weight = "";
+    defaultWeight = "";
+    kcal100 = "";
+    manualKcal = "";
+    dirty = false;
+  }
+
   public double total() {
     return manual
         ? VaultMarkdown.number(manualKcal)
@@ -100,7 +115,7 @@ public final class PortionForm {
   }
 
   public Save save() {
-    if (entry == null && !newFood && selectedFood == null)
+    if (entry == null && !manual && !newFood && selectedFood == null)
       throw new IllegalArgumentException("Сначала выберите еду");
     String title = name.trim(), line;
     VaultMarkdown.Food added = null;
@@ -116,6 +131,11 @@ public final class PortionForm {
           (title.isBlank() ? "" : title + " ")
               + VaultMarkdown.fmt(VaultMarkdown.number(manualKcal))
               + " ккал";
+      // Descriptions must not turn into weighted portions, comments or Markdown when reopened.
+      var parsed = VaultMarkdown.day(line, catalog).entries;
+      if (parsed.size() != 1 || parsed.get(0).weight != null || !parsed.get(0).name.equals(title))
+        throw new IllegalArgumentException(
+            "Описание должно быть одной строкой без Markdown-разметки и веса в конце");
     } else {
       line =
           VaultMarkdown.portion(title, VaultMarkdown.number(weight), VaultMarkdown.number(kcal100));

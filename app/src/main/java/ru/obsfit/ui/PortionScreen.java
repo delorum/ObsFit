@@ -23,6 +23,8 @@ public final class PortionScreen {
 
     void newFood();
 
+    void manualCalories();
+
     void chooseFromCatalog();
 
     void editSelectedFood();
@@ -132,7 +134,13 @@ public final class PortionScreen {
     }
     LinearLayout nameRow = ui.row(), nameBox = ui.column();
     ui.weighted(nameRow, nameBox);
-    EditText name = ui.field(nameBox, "Название еды", form.name, false, form.selectedFood == null);
+    EditText name =
+        ui.field(
+            nameBox,
+            form.manual ? "Описание (необязательно)" : "Название еды",
+            form.name,
+            false,
+            form.selectedFood == null);
     ui.watch(
         name,
         value -> {
@@ -144,25 +152,27 @@ public final class PortionScreen {
           ui.icon("✎", "Редактировать продукт в справочнике", actions::editSelectedFood),
           new LinearLayout.LayoutParams(ui.dp(48), ui.dp(52)));
     ui.body.addView(nameRow);
-    LinearLayout aliases = ui.column();
-    aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
-    ui.body.addView(
-        ui.button(
-            "Алиасы  ⌄",
-            () -> {
-              form.aliasesExpanded = !form.aliasesExpanded;
-              aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
-            }));
-    EditText alias =
-        ui.field(aliases, "Алиасы: по одному на строке", form.aliases, false, form.newFood);
-    ui.multiline(alias, 2);
-    ui.watch(
-        alias,
-        value -> {
-          form.aliases = value;
-          form.dirty = true;
-        });
-    ui.body.addView(aliases);
+    if (!form.manual) {
+      LinearLayout aliases = ui.column();
+      aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
+      ui.body.addView(
+          ui.button(
+              "Алиасы  ⌄",
+              () -> {
+                form.aliasesExpanded = !form.aliasesExpanded;
+                aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
+              }));
+      EditText alias =
+          ui.field(aliases, "Алиасы: по одному на строке", form.aliases, false, form.newFood);
+      ui.multiline(alias, 2);
+      ui.watch(
+          alias,
+          value -> {
+            form.aliases = value;
+            form.dirty = true;
+          });
+      ui.body.addView(aliases);
+    }
     ui.gap(ui.body, 10);
     if (form.newFood) {
       EditText defaultWeight =
