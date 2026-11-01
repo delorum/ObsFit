@@ -328,7 +328,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
           attached = true;
           redraw();
           consumeBarcode();
-        });
+        },
+        true);
   }
 
   private record Loaded(List<VaultRepository.Note> notes, VaultRepository.Snapshot day) {}
