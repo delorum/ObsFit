@@ -67,6 +67,10 @@ public final class PortionScreen {
             () -> {
               actions.newFood();
             }));
+    var firstMode = (LinearLayout.LayoutParams) mode.getChildAt(0).getLayoutParams();
+    firstMode.setMarginEnd(ui.dp(4));
+    var secondMode = (LinearLayout.LayoutParams) mode.getChildAt(1).getLayoutParams();
+    secondMode.setMarginStart(ui.dp(4));
     ui.body.addView(mode);
     ui.gap(ui.body, 12);
     if (form.choosing) choices();
@@ -150,7 +154,7 @@ public final class PortionScreen {
     if (form.selectedFood != null)
       nameRow.addView(
           ui.icon("✎", "Редактировать продукт в справочнике", actions::editSelectedFood),
-          new LinearLayout.LayoutParams(ui.dp(48), ui.dp(52)));
+          ui.spacedAction(48, 52));
     ui.body.addView(nameRow);
     if (!form.manual) {
       LinearLayout aliases = ui.column();

@@ -55,15 +55,15 @@ public final class DayScreen {
       return;
     }
     LinearLayout dates = ui.row();
-    MaterialButton prev = ui.button("‹", () -> actions.navigate(-1)),
-        next = ui.button("›", () -> actions.navigate(1));
-    prev.setContentDescription("Предыдущая заметка");
-    next.setContentDescription("Следующая заметка");
+    MaterialButton prev = ui.icon("‹", "Предыдущая заметка", () -> actions.navigate(-1)),
+        next = ui.icon("›", "Следующая заметка", () -> actions.navigate(1));
     prev.setEnabled(controller.canNavigate(-1));
     next.setEnabled(controller.canNavigate(1));
     prev.setAlpha(prev.isEnabled() ? 1f : .28f);
     next.setAlpha(next.isEnabled() ? 1f : .28f);
-    dates.addView(prev, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(52)));
+    var prevParams = new LinearLayout.LayoutParams(ui.dp(48), ui.dp(52));
+    prevParams.setMarginEnd(ui.dp(8));
+    dates.addView(prev, prevParams);
     LinearLayout label = ui.column();
     TextView date =
         ui.bold(
@@ -84,7 +84,7 @@ public final class DayScreen {
     label.setContentDescription("Выбрать дату");
     label.setOnClickListener(v -> actions.chooseDate());
     ui.weighted(dates, label);
-    dates.addView(next, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(52)));
+    dates.addView(next, ui.spacedAction(48, 52));
     ui.body.addView(dates);
     ui.gap(ui.body, 20);
     double total = state.day.day.total;
@@ -117,10 +117,12 @@ public final class DayScreen {
     card.setBackground(ui.background(CARD, 20));
     LinearLayout heading = ui.row();
     ui.weighted(heading, ui.bold((state.expanded.contains(name) ? "⌄  " : "›  ") + name, 18, INK));
-    heading.addView(ui.text(VaultMarkdown.fmt(total) + " ккал", 14, ACCENT));
+    TextView sectionCalories = ui.text(VaultMarkdown.fmt(total) + " ккал", 14, ACCENT);
+    sectionCalories.setPaddingRelative(ui.dp(8), ui.dp(5), 0, ui.dp(5));
+    heading.addView(sectionCalories);
     heading.addView(
         ui.icon("＋", "Добавить еду: " + name, () -> actions.portion(name, null)),
-        new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
+        ui.spacedAction(48, 48));
     heading.setMinimumHeight(ui.dp(48));
     heading.setContentDescription(
         name
@@ -156,7 +158,7 @@ public final class DayScreen {
     row.addView(ui.bold(VaultMarkdown.fmt(entry.kcal) + " ккал", 16, INK));
     row.addView(
         ui.icon("⋮", "Действия с записью", () -> actions.entryMenu(entry)),
-        new LinearLayout.LayoutParams(ui.dp(40), ui.dp(48)));
+        ui.spacedAction(40, 48));
     row.setContentDescription(
         (entry.name.isBlank() ? "Калории" : entry.name)
             + ", "

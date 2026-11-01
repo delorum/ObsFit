@@ -114,11 +114,24 @@ public final class Ui {
   public MaterialButton icon(String icon, String description, Runnable click) {
     MaterialButton b = button(icon, click);
     b.setTextSize(
-        icon.equals("≡") || icon.equals("▣") || icon.equals("✎") || icon.equals("＋") ? 22 : 14);
+        switch (icon) {
+          case "≡", "↻", "⚙" -> 28;
+          case "‹", "›" -> 34;
+          case "ккал" -> 14;
+          default -> 22;
+        });
+    b.setIncludeFontPadding(false);
     b.setPadding(0, 0, 0, 0);
     b.setContentDescription(description);
     ViewCompat.setTooltipText(b, description);
     return b;
+  }
+
+  /** Layout dimensions in dp; keeps horizontal actions apart without adding rows. */
+  public LinearLayout.LayoutParams spacedAction(int width, int height) {
+    var params = new LinearLayout.LayoutParams(dp(width), dp(height));
+    params.setMarginStart(dp(8));
+    return params;
   }
 
   public void gap(LinearLayout parent, int height) {
@@ -144,8 +157,11 @@ public final class Ui {
         });
     LinearLayout bar = row();
     bar.setPadding(dp(16), dp(4), dp(16), dp(4));
-    if (back != null)
-      bar.addView(icon("‹", "Назад", back), new LinearLayout.LayoutParams(dp(48), dp(52)));
+    if (back != null) {
+      var backParams = new LinearLayout.LayoutParams(dp(48), dp(52));
+      backParams.setMarginEnd(dp(8));
+      bar.addView(icon("‹", "Назад", back), backParams);
+    }
     LinearLayout titles = column();
     titles.addView(bold(title, 23, INK));
     if (subtitle != null) titles.addView(text(subtitle, 12, MUTED));
@@ -158,7 +174,7 @@ public final class Ui {
               action.longClick().run();
               return true;
             });
-      bar.addView(b, new LinearLayout.LayoutParams(dp(48), dp(52)));
+      bar.addView(b, spacedAction(48, 52));
     }
     root.addView(bar);
     progress = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);

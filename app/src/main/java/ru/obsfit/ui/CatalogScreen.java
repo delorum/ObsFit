@@ -82,7 +82,7 @@ public final class CatalogScreen {
     ui.weighted(row, labels);
     row.addView(
         ui.icon("⋮", "Действия с продуктом", () -> actions.catalogMenu(food)),
-        new LinearLayout.LayoutParams(ui.dp(44), ui.dp(48)));
+        ui.spacedAction(44, 48));
     row.setContentDescription(
         food.name + ". Нажмите для редактирования или смахните для удаления.");
     Swipes.bind(ui, row, () -> actions.deleteCatalog(food), () -> actions.deleteCatalog(food));
