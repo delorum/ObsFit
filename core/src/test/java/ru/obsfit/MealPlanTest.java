@@ -21,7 +21,7 @@ public class MealPlanTest {
   public void scheduleMatchesSevenRequestedWindowsAnd2600Calories() {
     assertEquals(7, MealPlan.SLOTS.size());
     assertEquals(
-        List.of(500, 100, 650, 100, 600, 550, 100),
+        List.of(500, 300, 400, 300, 400, 400, 300),
         MealPlan.SLOTS.stream().map(MealPlan.Slot::calories).toList());
     assertEquals(2600, MealPlan.SLOTS.stream().mapToInt(MealPlan.Slot::calories).sum());
     assertEquals(
@@ -30,7 +30,7 @@ public class MealPlanTest {
     assertEquals(
         List.of("10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"),
         MealPlan.SLOTS.stream().map(s -> s.end().toString()).toList());
-    assertEquals(3, MealPlan.SLOTS.stream().filter(s -> s.calories() == 100).count());
+    assertEquals(3, MealPlan.SLOTS.stream().filter(s -> s.calories() == 300).count());
   }
 
   @Test
@@ -62,33 +62,33 @@ public class MealPlanTest {
     var a = at("09:30", eaten("Завтрак", 500));
     assertEquals(0, a.available());
     assertEquals(DAY.atTime(11, 0), a.nextAt());
-    assertEquals(100, a.nextCalories());
+    assertEquals(300, a.nextCalories());
   }
 
   @Test
   public void missedBreakfastIsCarriedEquallyToSixRemainingMeals() {
     var a = at("11:00");
-    assertEquals(100 + 500d / 6, a.available(), 1);
-    assertEquals(650 + 500d / 6, a.nextCalories(), 1);
+    assertEquals(300 + 500d / 6, a.available(), 1);
+    assertEquals(400 + 500d / 6, a.nextCalories(), 1);
   }
 
   @Test
   public void breakfastOverspendReducesAllRemainingMealsEqually() {
     var a = at("11:00", eaten("Завтрак", 650));
-    assertEquals(75, a.available());
-    assertEquals(625, a.nextCalories());
+    assertEquals(275, a.available());
+    assertEquals(375, a.nextCalories());
   }
 
   @Test
   public void exhaustedCurrentBudgetIsZeroAndOverspendMovesForward() {
     var a = at("09:30", eaten("Завтрак", 800));
     assertEquals(0, a.available());
-    assertEquals(50, a.nextCalories());
+    assertEquals(250, a.nextCalories());
   }
 
   @Test
   public void canSkipAFutureMealWhoseRemainingBudgetIsAlreadyZero() {
-    var a = at("09:30", eaten("Завтрак", 1250));
+    var a = at("09:30", eaten("Завтрак", 2450));
     assertEquals(0, a.available());
     assertEquals("Обед", a.next().name());
     assertEquals(DAY.atTime(13, 0), a.nextAt());
@@ -96,18 +96,18 @@ public class MealPlanTest {
 
   @Test
   public void filledFutureMainSectionIsNotAllocatedTwice() {
-    var a = at("11:00", eaten("Завтрак", 500), eaten("Обед", 650));
-    assertEquals(100, a.available());
+    var a = at("11:00", eaten("Завтрак", 500), eaten("Обед", 400));
+    assertEquals(300, a.available());
     assertEquals(DAY.atTime(15, 0), a.nextAt());
   }
 
   @Test
   public void snacksWithoutTimesAreFilledChronologically() {
-    var a = at("15:30", eaten("Завтрак", 500), eaten("Обед", 650), eaten("Перекусы", 100));
-    assertEquals(100, a.available());
+    var a = at("15:30", eaten("Завтрак", 500), eaten("Обед", 400), eaten("Перекусы", 300));
+    assertEquals(300, a.available());
     assertTrue(a.approximate());
-    var b = at("15:30", eaten("Завтрак", 500), eaten("Обед", 650), eaten("Перекусы", 150));
-    assertEquals(50, b.available());
+    var b = at("15:30", eaten("Завтрак", 500), eaten("Обед", 400), eaten("Перекусы", 450));
+    assertEquals(150, b.available());
   }
 
   @Test
@@ -116,7 +116,7 @@ public class MealPlanTest {
     assertEquals(150, a.available());
     assertTrue(a.approximate());
     var b = at("10:30", eaten("Заметки", 500));
-    assertEquals(100, b.nextCalories());
+    assertEquals(300, b.nextCalories());
   }
 
   @Test
@@ -134,11 +134,11 @@ public class MealPlanTest {
         at(
             "21:30",
             eaten("Завтрак", 500),
-            eaten("Обед", 650),
-            eaten("Второй обед", 600),
-            eaten("Ужин", 550),
-            eaten("Перекусы", 200));
-    assertEquals(100, a.available());
+            eaten("Обед", 400),
+            eaten("Второй обед", 400),
+            eaten("Ужин", 400),
+            eaten("Перекусы", 600));
+    assertEquals(300, a.available());
     var b = at("22:00");
     assertEquals(0, b.available());
     assertTrue(b.ended());
@@ -147,10 +147,10 @@ public class MealPlanTest {
 
   @Test
   public void roundingPreservesWholeCalorieDailyBudget() {
-    int[] values = MealPlan.distribute(new double[] {100, 550, 100, 500, 500, 100}, 2000);
+    int[] values = MealPlan.distribute(new double[] {300, 400, 300, 400, 400, 300}, 2000);
     assertEquals(2000, Arrays.stream(values).sum());
     assertTrue(Arrays.stream(values).allMatch(n -> n >= 0));
-    assertTrue(Math.abs((values[0] - 100) - (values[1] - 550)) <= 1);
+    assertTrue(Math.abs((values[0] - 300) - (values[1] - 400)) <= 1);
   }
 
   @Test
