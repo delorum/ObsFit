@@ -62,7 +62,9 @@ public final class PortionScreen {
                 if (form.choosing) actions.newFood();
                 else actions.chooseFromCatalog();
               }));
-      ui.weighted(mode, ui.button("＋ ккал", actions::manualCalories));
+      if (form.manual && !form.choosing)
+        ui.weighted(mode, ui.button("＋ Новая еда", actions::newFood));
+      else ui.weighted(mode, ui.button("＋ ккал", actions::manualCalories));
     } else {
       ui.weighted(mode, ui.button("Из справочника", actions::chooseFromCatalog));
       ui.weighted(mode, ui.button("＋ Новая еда", actions::newFood));

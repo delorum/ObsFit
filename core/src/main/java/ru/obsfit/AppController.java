@@ -62,8 +62,14 @@ public final class AppController {
     state.portion.startNew();
   }
 
+  public void manualCalories() {
+    state.pendingBarcode = null;
+    state.portion.startManual();
+  }
+
   public void chooseFromCatalog() {
     state.pendingBarcode = null;
+    state.portion.manual = false;
     state.portion.newFood = false;
     state.portion.choosing = true;
   }
