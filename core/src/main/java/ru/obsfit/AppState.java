@@ -31,7 +31,7 @@ public final class AppState {
   public String catalogQuery = "", pendingBarcode, error;
   public ScanTarget scanTarget;
   public int scrollY;
-  public boolean busy;
+  public boolean busy, refreshing;
 
   public record Saved(
       Screen screen,

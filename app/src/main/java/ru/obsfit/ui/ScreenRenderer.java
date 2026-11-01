@@ -68,7 +68,7 @@ public final class ScreenRenderer {
         subtitle = "ObsFit · локальное хранилище";
       }
     }
-    ui.page(title, subtitle, back, toolbar, state.busy);
+    ui.page(title, subtitle, back, toolbar, state.refreshing);
     switch (state.screen) {
       case DAY -> new DayScreen(ui, controller, actions).render();
       case PORTION -> new PortionScreen(ui, state, actions, recent).render();

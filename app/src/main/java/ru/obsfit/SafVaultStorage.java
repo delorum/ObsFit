@@ -13,7 +13,7 @@ import java.util.*;
 public final class SafVaultStorage implements VaultStorage {
   private final Context context;
   private final Uri rootUri;
-  private final Map<String, Uri> documents = new HashMap<>();
+  private final Map<String, Uri> documents = new java.util.concurrent.ConcurrentHashMap<>();
 
   public SafVaultStorage(Context context, Uri rootUri) {
     this.context = context.getApplicationContext();
@@ -48,6 +48,48 @@ public final class SafVaultStorage implements VaultStorage {
           "В выбранной папке не найден «" + path + "». Выберите корень YaDiskVera.");
     documents.put(path, file.getUri());
     return file.getUri();
+  }
+
+  @Override
+  public Stamp stamp(String path) throws IOException {
+    try {
+      return queryStamp(resolve(path));
+    } catch (IOException error) {
+      documents.remove(path);
+      return queryStamp(resolve(path));
+    }
+  }
+
+  private Stamp queryStamp(Uri uri) throws IOException {
+    String[] columns = {
+      DocumentsContract.Document.COLUMN_LAST_MODIFIED, DocumentsContract.Document.COLUMN_SIZE
+    };
+    try (Cursor cursor = context.getContentResolver().query(uri, columns, null, null, null)) {
+      if (cursor == null || !cursor.moveToFirst()) throw new IOException("Файл недоступен");
+      return new Stamp(
+          cursor.isNull(0) ? null : cursor.getLong(0), cursor.isNull(1) ? null : cursor.getLong(1));
+    }
+  }
+
+  /** Uses already resolved document URIs; never performs provider I/O on the UI thread. */
+  public Set<Uri> observationUris(VaultRepository.Note note) {
+    Set<Uri> uris = new LinkedHashSet<>();
+    uris.add(rootUri);
+    Uri rootDocument =
+        DocumentsContract.buildDocumentUriUsingTree(
+            rootUri, DocumentsContract.getTreeDocumentId(rootUri));
+    uris.add(rootDocument);
+    for (String path : VaultRepository.watchedPaths(note)) {
+      Uri document = documents.get(path);
+      if (document != null) uris.add(document);
+      int slash = path.lastIndexOf('/');
+      Uri parent = slash < 0 ? rootDocument : documents.get(path.substring(0, slash));
+      if (parent != null)
+        uris.add(
+            DocumentsContract.buildChildDocumentsUriUsingTree(
+                rootUri, DocumentsContract.getDocumentId(parent)));
+    }
+    return uris;
   }
 
   private String readUri(Uri uri) throws IOException {

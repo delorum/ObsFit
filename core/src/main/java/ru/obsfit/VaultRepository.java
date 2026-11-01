@@ -11,6 +11,41 @@ import java.util.*;
 public final class VaultRepository {
   private final VaultStorage storage;
   private final BackupStore backups;
+  // Accessed only by the single I/O executor. Cache is committed after successful reading/parsing.
+  private Snapshot cachedDay;
+  private boolean retryRead;
+  private Map<String, VaultStorage.Stamp> loadedStamps = Map.of();
+
+  public static List<String> watchedPaths(Note note) {
+    return List.of("Еда.md", "Замены.md", note.path);
+  }
+
+  private Map<String, VaultStorage.Stamp> stamps(Note note) {
+    Map<String, VaultStorage.Stamp> result = new LinkedHashMap<>();
+    try {
+      for (String path : watchedPaths(note)) {
+        var stamp = storage.stamp(path);
+        if (stamp == null || !stamp.known()) return Map.of();
+        result.put(path, stamp);
+      }
+    } catch (IOException | UnsupportedOperationException | IllegalArgumentException error) {
+      return Map.of();
+    }
+    return result;
+  }
+
+  /** Null means the displayed snapshot remains current. Force bypasses metadata, e.g. on resume. */
+  public Snapshot refresh(Note note, Snapshot displayed, boolean force) throws IOException {
+    if (!force
+        && !retryRead
+        && cachedDay != null
+        && cachedDay.note.path.equals(note.path)
+        && !loadedStamps.isEmpty()
+        && loadedStamps.equals(stamps(note))) {
+      return cachedDay == displayed ? null : cachedDay;
+    }
+    return load(note);
+  }
 
   public static final class Note {
     public final LocalDate date;
@@ -101,10 +136,18 @@ public final class VaultRepository {
   }
 
   public Snapshot load(Note note) throws IOException {
+    retryRead = true;
+    var before = stamps(note);
     String food = storage.read("Еда.md"), replacements = storage.read("Замены.md");
     VaultMarkdown.Catalog catalog = VaultMarkdown.catalog(food);
-    return new Snapshot(
-        note, food, replacements, catalog, VaultMarkdown.day(storage.read(note.path), catalog));
+    Snapshot loaded =
+        new Snapshot(
+            note, food, replacements, catalog, VaultMarkdown.day(storage.read(note.path), catalog));
+    var after = stamps(note);
+    loadedStamps = !before.isEmpty() && before.equals(after) ? after : Map.of();
+    cachedDay = loaded;
+    retryRead = false;
+    return loaded;
   }
 
   public CatalogSnapshot loadCatalog() throws IOException {

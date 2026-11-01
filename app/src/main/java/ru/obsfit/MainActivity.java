@@ -33,13 +33,72 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   private SafVaultStorage storage;
   private FileBackups backups;
   private AppState.Saved restoring;
-  private boolean attached, resumed;
+  private boolean attached, resumed, checkingDay;
+  private VaultObserver observer;
+  private boolean resumeCheckPending;
+  private final Runnable providerChanged = () -> checkDay(false);
+
+  private void providerChanged() {
+    handler.removeCallbacks(providerChanged);
+    handler.postDelayed(providerChanged, 600);
+  }
+
+  private void watchDay() {
+    if (observer == null) return;
+    if (resumed && storage != null && state.screen == AppState.Screen.DAY && state.day != null)
+      observer.watch(storage.observationUris(state.day.note));
+    else observer.close();
+  }
+
+  private void checkDay(boolean force) {
+    if (!resumed || repo == null || state.screen != AppState.Screen.DAY || state.day == null)
+      return;
+    resumeCheckPending |= force;
+    if (checkingDay || state.busy) return;
+    checkingDay = true;
+    boolean unconditional = resumeCheckPending;
+    resumeCheckPending = false;
+    var expected = state.day;
+    var source = repo;
+    io.execute(
+        () -> {
+          try {
+            var updated = source.refresh(expected.note, expected, unconditional);
+            runOnUiThread(
+                () -> {
+                  checkingDay = false;
+                  // A navigation, edit, save or vault switch must win over an older background
+                  // result.
+                  if (!isDestroyed()
+                      && resumed
+                      && repo == source
+                      && !state.busy
+                      && state.screen == AppState.Screen.DAY
+                      && state.day == expected
+                      && state.selected.equals(expected.note.date)
+                      && updated != null) {
+                    applyDay(new Loaded(state.notes, updated), false);
+                  }
+                  if (!isDestroyed() && resumeCheckPending) checkDay(false);
+                });
+          } catch (Exception error) {
+            android.util.Log.d("ObsFitRefresh", "Background refresh failed; will retry", error);
+            runOnUiThread(
+                () -> {
+                  checkingDay = false;
+                  // Keep the last successful cache and the current screen. Manual refresh shows
+                  // errors.
+                  if (!isDestroyed() && resumeCheckPending) checkDay(false);
+                });
+          }
+        });
+  }
+
   private final Runnable poll =
       new Runnable() {
         @Override
         public void run() {
-          if (resumed && !state.busy && state.screen == AppState.Screen.DAY && state.day != null)
-            reload(false);
+          checkDay(false);
           if (resumed) handler.postDelayed(this, 12000);
         }
       };
@@ -60,6 +119,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
             });
     prefs = getSharedPreferences("obsfit", MODE_PRIVATE);
     ui = new Ui(this);
+    observer = new VaultObserver(getContentResolver(), handler, this::providerChanged);
     dialogs = new UiDialogs(ui);
     backups = new FileBackups(new File(getFilesDir(), "backups"));
     if (saved != null) {
@@ -91,23 +151,25 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     resumed = true;
     handler.removeCallbacks(poll);
     handler.postDelayed(poll, 12000);
-    if (attached
-        && repo != null
-        && !state.busy
-        && state.screen == AppState.Screen.DAY
-        && state.day != null) reload(false);
+    if (attached && repo != null && state.screen == AppState.Screen.DAY && state.day != null)
+      checkDay(true);
+    watchDay();
   }
 
   @Override
   protected void onPause() {
     resumed = false;
     handler.removeCallbacks(poll);
+    handler.removeCallbacks(providerChanged);
+    if (observer != null) observer.close();
     super.onPause();
   }
 
   @Override
   protected void onDestroy() {
     handler.removeCallbacks(poll);
+    handler.removeCallbacks(providerChanged);
+    if (observer != null) observer.close();
     io.shutdown();
     super.onDestroy();
   }
@@ -117,10 +179,15 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   private <T> void task(Work<T> work, Consumer<T> done) {
+    task(work, done, false);
+  }
+
+  private <T> void task(Work<T> work, Consumer<T> done, boolean showProgress) {
     if (state.busy || isDestroyed()) return;
+    state.refreshing = showProgress;
     state.busy = true;
     state.error = null;
-    ui.setBusy(true);
+    ui.setBusy(showProgress);
     ui.error(null);
     io.execute(
         () -> {
@@ -130,9 +197,11 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
                 () -> {
                   if (isDestroyed()) return;
                   state.busy = false;
+                  state.refreshing = false;
                   ui.setBusy(false);
                   try {
                     done.accept(result);
+                    if (resumeCheckPending) checkDay(false);
                   } catch (IllegalArgumentException | IllegalStateException error) {
                     error(error.getMessage());
                   }
@@ -142,6 +211,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
                 () -> {
                   if (isDestroyed()) return;
                   state.busy = false;
+                  state.refreshing = false;
                   ui.setBusy(false);
                   error(error.getMessage() == null ? error.toString() : error.getMessage());
                 });
@@ -165,6 +235,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   @Override
   public void redraw() {
     new ScreenRenderer(ui, controller, this, this::recent).render();
+    watchDay();
   }
 
   @Override
@@ -266,7 +337,9 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     if (repo == null || state.busy) return;
     LocalDate selected = state.selected;
     List<VaultRepository.Note> oldNotes = state.notes;
-    if (state.screen == AppState.Screen.DAY) state.scrollY = ui.scroll.getScrollY();
+    if (state.screen == AppState.Screen.DAY
+        && state.day != null
+        && state.selected.equals(state.day.note.date)) state.scrollY = ui.scroll.getScrollY();
     task(
         () -> {
           var notes = rescan ? repo.notes() : oldNotes;
@@ -279,20 +352,29 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
               notes,
               repo.load(notes.stream().filter(n -> n.date.equals(date)).findFirst().orElseThrow()));
         },
-        data -> {
-          var old = state.day;
-          boolean redraw =
-              rescan
-                  || state.screen != AppState.Screen.DAY
-                  || old == null
-                  || data.day() == null
-                  || !old.note.path.equals(data.day().note.path)
-                  || !old.day.source.equals(data.day().day.source)
-                  || !old.foodText.equals(data.day().foodText);
-          state.notes = data.notes();
-          controller.day(data.day());
-          if (redraw) redraw();
-        });
+        data -> applyDay(data, rescan),
+        rescan);
+  }
+
+  private void applyDay(Loaded data, boolean forceRedraw) {
+    var old = state.day;
+    boolean changed =
+        forceRedraw
+            || state.screen != AppState.Screen.DAY
+            || old == null
+            || data.day() == null
+            || !old.note.path.equals(data.day().note.path)
+            || !old.day.source.equals(data.day().day.source)
+            || !old.foodText.equals(data.day().foodText);
+    if (state.screen == AppState.Screen.DAY
+        && ui.scroll != null
+        && old != null
+        && data.day() != null
+        && old.note.path.equals(data.day().note.path)) state.scrollY = ui.scroll.getScrollY();
+    state.notes = data.notes();
+    controller.day(data.day());
+    if (changed) redraw();
+    else watchDay();
   }
 
   @Override
@@ -442,13 +524,15 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
 
   @Override
   public void openCatalog() {
+    boolean manualRefresh = state.screen == AppState.Screen.CATALOG;
     if (repo == null || state.busy) return;
     task(
         () -> repo.loadCatalog(),
         catalog -> {
           controller.catalog(catalog);
           redraw();
-        });
+        },
+        manualRefresh);
   }
 
   @Override
