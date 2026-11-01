@@ -170,7 +170,7 @@ public final class MainActivity extends AppCompatActivity {
         }));gap(content,18);
         content.addView(bold("Штрихкоды",18,INK));content.addView(text("Камера распознаёт код на устройстве. Для поиска товара только штрихкод отправляется в Open Food Facts. Нужен интернет; база может не содержать товар. Проверяйте данные по упаковке. Данные Open Food Facts — ODbL.",15,MUTED));
         content.addView(button("Open Food Facts ↗",()->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://world.openfoodfacts.org")))));
-        content.addView(text("ObsFit 0.1.8 · Android-прототип",12,MUTED));
+        content.addView(text("ObsFit 0.1.10 · Android-прототип",12,MUTED));
     }
     private void connect(Uri uri,boolean save) {
         VaultRepository candidate=new VaultRepository(this,uri);
@@ -256,13 +256,13 @@ public final class MainActivity extends AppCompatActivity {
     private void section(String name) {
         List<VaultMarkdown.Entry> entries=snapshot.day.section(name);double total=entries.stream().mapToDouble(e->e.kcal).sum();
         LinearLayout card=column();card.setPadding(dp(14),dp(8),dp(14),dp(12));card.setBackground(background(CARD,20));
-        LinearLayout heading=row();TextView title=bold((expanded.contains(name)?"⌄  ":"›  ")+name,18,INK);weighted(heading,title);heading.addView(text(VaultMarkdown.fmt(total)+" ккал",14,ACCENT));heading.setMinimumHeight(dp(48));
+        LinearLayout heading=row();TextView title=bold((expanded.contains(name)?"⌄  ":"›  ")+name,18,INK);weighted(heading,title);heading.addView(text(VaultMarkdown.fmt(total)+" ккал",14,ACCENT));
+        MaterialButton add=button("＋",()->openForm(name,null));add.setTextSize(22);add.setPadding(0,0,0,0);add.setContentDescription("Добавить еду: "+name);ViewCompat.setTooltipText(add,"Добавить еду: "+name);heading.addView(add,new LinearLayout.LayoutParams(dp(48),dp(48)));heading.setMinimumHeight(dp(48));
         heading.setContentDescription(name+", "+VaultMarkdown.fmt(total)+" килокалорий, "+(expanded.contains(name)?"свернуть":"раскрыть"));
         heading.setOnClickListener(v->{scrollY=scroll.getScrollY();if(!expanded.add(name))expanded.remove(name);showDay();});card.addView(heading);
         if(expanded.contains(name)) {
             if(entries.isEmpty())card.addView(text("Пока ничего",14,MUTED));
             for(VaultMarkdown.Entry entry:entries)card.addView(entryRow(entry));
-            MaterialButton add=button("＋  Добавить",()->openForm(name,null));add.setBackgroundTintList(ColorStateList.valueOf(0xff333b4a));card.addView(add,new LinearLayout.LayoutParams(-1,dp(50)));
         }
         content.addView(card);gap(content,10);
     }
@@ -275,10 +275,6 @@ public final class MainActivity extends AppCompatActivity {
         LinearLayout texts=column();texts.addView(text(entry.name.isBlank()?"Калории":entry.name,17,INK));texts.addView(text(entry.weight==null?"Без веса":VaultMarkdown.fmt(entry.weight)+" г",13,MUTED));weighted(row,texts);row.addView(bold(VaultMarkdown.fmt(entry.kcal)+" ккал",16,INK));
         MaterialButton options=button("⋮",()->entryMenu(entry));options.setContentDescription("Действия с записью");row.addView(options,new LinearLayout.LayoutParams(dp(40),dp(48)));
         row.setContentDescription((entry.name.isBlank()?"Калории":entry.name)+", "+VaultMarkdown.fmt(entry.kcal)+" ккал. Нажмите для редактирования; смахните влево для удаления, вправо для переноса.");
-        LinearLayout actions=row();actions.setVisibility(View.GONE);actions.setGravity(Gravity.END);
-        MaterialButton remove=button("Удалить",()->delete(entry));remove.setBackgroundTintList(ColorStateList.valueOf(0xffa6384b));
-        MaterialButton cancel=button("×",()->actions.setVisibility(View.GONE));
-        actions.addView(remove);actions.addView(cancel,new LinearLayout.LayoutParams(dp(48),dp(48)));
         final float[] start={0,0};final boolean[] swipe={false};int slop=ViewConfiguration.get(this).getScaledTouchSlop();
         row.setOnTouchListener((v,event)->{
             switch(event.getActionMasked()) {
@@ -291,8 +287,8 @@ public final class MainActivity extends AppCompatActivity {
                 case MotionEvent.ACTION_UP -> {
                     float dx=event.getX()-start[0];row.animate().translationX(0).setDuration(120).start();v.getParent().requestDisallowInterceptTouchEvent(false);
                     if(swipe[0]&&Math.abs(dx)>dp(40)) {
-                        if(dx>0) {actions.setVisibility(View.GONE);move(entry);}
-                        else actions.setVisibility(View.VISIBLE);
+                        if(dx>0)move(entry);
+                        else delete(entry);
                     }
                     else if(Math.abs(dx)<slop&&Math.abs(event.getY()-start[1])<slop) {v.performClick();}
                     return true;
@@ -303,7 +299,7 @@ public final class MainActivity extends AppCompatActivity {
         });
         row.setOnClickListener(v->openForm(entry.section,entry));
         row.setOnLongClickListener(v->{entryMenu(entry);return true;});
-        wrapper.addView(row);wrapper.addView(actions);View divider=new View(this);divider.setBackgroundColor(0xff383f4a);wrapper.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));return wrapper;
+        wrapper.addView(row);View divider=new View(this);divider.setBackgroundColor(0xff383f4a);wrapper.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));return wrapper;
     }
     private void entryMenu(VaultMarkdown.Entry entry) {
         if(busy)return;
@@ -485,13 +481,10 @@ public final class MainActivity extends AppCompatActivity {
         labels.addView(text(VaultMarkdown.fmt(food.kcal100)+" ккал/100 г · "+VaultMarkdown.fmt(food.weight)+" г",13,MUTED));
         if(!food.aliases.isEmpty())labels.addView(text(String.join(", ",food.aliases),12,MUTED));
         if(!food.ingredients.isEmpty())labels.addView(text("Составное блюдо",12,ACCENT));weighted(item,labels);
-        LinearLayout actions=row();actions.setGravity(Gravity.END);actions.setVisibility(View.GONE);
-        MaterialButton remove=button("Удалить",()->deleteCatalogFood(food));remove.setBackgroundTintList(ColorStateList.valueOf(0xffa6384b));actions.addView(remove);
-        actions.addView(button("×",()->actions.setVisibility(View.GONE)));
         MaterialButton more=button("⋮",()->{
             if(busy)return;
-            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setItems(new String[]{"Редактировать","Показать удаление"},(d,index)->{
-                if(index==0)showCatalogEditor(food);else actions.setVisibility(View.VISIBLE);
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setItems(new String[]{"Редактировать","Удалить"},(d,index)->{
+                if(index==0)showCatalogEditor(food);else deleteCatalogFood(food);
             }).show();
         });more.setContentDescription("Действия с продуктом");item.addView(more,new LinearLayout.LayoutParams(dp(44),dp(48)));
         item.setContentDescription(food.name+". Нажмите для редактирования или смахните для удаления.");
@@ -505,17 +498,18 @@ public final class MainActivity extends AppCompatActivity {
                 }
                 case MotionEvent.ACTION_UP -> {
                     float dx=event.getX()-down[0];item.animate().translationX(0).setDuration(120).start();v.getParent().requestDisallowInterceptTouchEvent(false);
-                    if(swipe[0]&&Math.abs(dx)>dp(40))actions.setVisibility(View.VISIBLE);
+                    if(swipe[0]&&Math.abs(dx)>dp(40))deleteCatalogFood(food);
                     else if(Math.abs(dx)<slop&&Math.abs(event.getY()-down[1])<slop)v.performClick();return true;
                 }
                 case MotionEvent.ACTION_CANCEL -> {item.setTranslationX(0);return true;}
             }return true;
         });
-        item.setOnClickListener(v->{if(!busy)showCatalogEditor(food);});wrapper.addView(item);wrapper.addView(actions);return wrapper;
+        item.setOnClickListener(v->{if(!busy)showCatalogEditor(food);});wrapper.addView(item);return wrapper;
     }
     private void deleteCatalogFood(VaultMarkdown.Food food) {
         if(busy)return;VaultRepository.CatalogSnapshot original=catalogSnapshot;
-        task(()->{String updated=VaultMarkdown.deleteFood(original.catalog,food.name);repo.saveCatalog(original,updated);return repo.loadCatalog();},data->{catalogSnapshot=data;showCatalog();});
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Удалить продукт?").setMessage(food.name).setNegativeButton("Отмена",null)
+            .setPositiveButton("Удалить",(d,w)->task(()->{String updated=VaultMarkdown.deleteFood(original.catalog,food.name);repo.saveCatalog(original,updated);return repo.loadCatalog();},data->{catalogSnapshot=data;showCatalog();})).show();
     }
     private final class CatalogEdit {
         final VaultRepository.CatalogSnapshot original;
