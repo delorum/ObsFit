@@ -21,7 +21,7 @@ public final class PortionModesTest {
     assertFalse(controller.state.portion.choosing);
     assertNull(controller.state.portion.selectedFood);
     assertSame(original, controller.state.day);
-    assertEquals("Перекусы", controller.state.portion.section);
+    assertEquals("Перекус 4", controller.state.portion.section);
     controller.chooseFromCatalog();
     assertTrue(controller.state.portion.choosing);
     assertFalse(controller.state.portion.manual);

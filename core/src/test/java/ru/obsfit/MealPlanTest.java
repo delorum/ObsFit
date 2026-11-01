@@ -18,19 +18,19 @@ public class MealPlanTest {
   }
 
   @Test
-  public void scheduleMatchesSevenRequestedWindowsAnd2600Calories() {
-    assertEquals(7, MealPlan.SLOTS.size());
+  public void scheduleMatchesEightWindowsAnd2600Calories() {
+    assertEquals(8, MealPlan.SLOTS.size());
     assertEquals(
-        List.of(500, 300, 400, 300, 400, 400, 300),
+        List.of(500, 225, 400, 225, 400, 225, 400, 225),
         MealPlan.SLOTS.stream().map(MealPlan.Slot::calories).toList());
     assertEquals(2600, MealPlan.SLOTS.stream().mapToInt(MealPlan.Slot::calories).sum());
     assertEquals(
-        List.of("09:00", "11:00", "13:00", "15:00", "17:00", "19:00", "21:00"),
+        List.of("09:00", "11:00", "13:00", "15:00", "17:00", "18:00", "19:00", "21:00"),
         MealPlan.SLOTS.stream().map(s -> s.start().toString()).toList());
     assertEquals(
-        List.of("10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"),
+        List.of("10:00", "12:00", "14:00", "16:00", "18:00", "19:00", "20:00", "22:00"),
         MealPlan.SLOTS.stream().map(s -> s.end().toString()).toList());
-    assertEquals(3, MealPlan.SLOTS.stream().filter(s -> s.calories() == 300).count());
+    assertEquals(4, MealPlan.SLOTS.stream().filter(s -> s.calories() == 225).count());
   }
 
   @Test
@@ -62,28 +62,28 @@ public class MealPlanTest {
     var a = at("09:30", eaten("Завтрак", 500));
     assertEquals(0, a.available());
     assertEquals(DAY.atTime(11, 0), a.nextAt());
-    assertEquals(300, a.nextCalories());
+    assertEquals(225, a.nextCalories());
   }
 
   @Test
-  public void missedBreakfastIsCarriedEquallyToSixRemainingMeals() {
+  public void missedBreakfastIsCarriedEquallyToSevenRemainingMeals() {
     var a = at("11:00");
-    assertEquals(300 + 500d / 6, a.available(), 1);
-    assertEquals(400 + 500d / 6, a.nextCalories(), 1);
+    assertEquals(225 + 500d / 7, a.available(), 1);
+    assertEquals(400 + 500d / 7, a.nextCalories(), 1);
   }
 
   @Test
   public void breakfastOverspendReducesAllRemainingMealsEqually() {
     var a = at("11:00", eaten("Завтрак", 650));
-    assertEquals(275, a.available());
-    assertEquals(375, a.nextCalories());
+    assertEquals(225 - 150d / 7, a.available(), 1);
+    assertEquals(400 - 150d / 7, a.nextCalories(), 1);
   }
 
   @Test
   public void exhaustedCurrentBudgetIsZeroAndOverspendMovesForward() {
     var a = at("09:30", eaten("Завтрак", 800));
     assertEquals(0, a.available());
-    assertEquals(250, a.nextCalories());
+    assertEquals(225 - 300d / 7, a.nextCalories(), 1);
   }
 
   @Test
@@ -97,16 +97,22 @@ public class MealPlanTest {
   @Test
   public void filledFutureMainSectionIsNotAllocatedTwice() {
     var a = at("11:00", eaten("Завтрак", 500), eaten("Обед", 400));
-    assertEquals(300, a.available());
+    assertEquals(225, a.available());
     assertEquals(DAY.atTime(15, 0), a.nextAt());
   }
 
   @Test
-  public void snacksWithoutTimesAreFilledChronologically() {
-    var a = at("15:30", eaten("Завтрак", 500), eaten("Обед", 400), eaten("Перекусы", 300));
-    assertEquals(300, a.available());
-    assertTrue(a.approximate());
-    var b = at("15:30", eaten("Завтрак", 500), eaten("Обед", 400), eaten("Перекусы", 450));
+  public void numberedSnacksAreAssignedToTheirOwnWindows() {
+    var a = at("15:30", eaten("Завтрак", 500), eaten("Обед", 400), eaten("Перекус 1", 225));
+    assertEquals(225, a.available());
+    assertFalse(a.approximate());
+    var b =
+        at(
+            "15:30",
+            eaten("Завтрак", 500),
+            eaten("Обед", 400),
+            eaten("Перекус 1", 225),
+            eaten("Перекус 2", 75));
     assertEquals(150, b.available());
   }
 
@@ -116,7 +122,7 @@ public class MealPlanTest {
     assertEquals(150, a.available());
     assertTrue(a.approximate());
     var b = at("10:30", eaten("Заметки", 500));
-    assertEquals(300, b.nextCalories());
+    assertEquals(225, b.nextCalories());
   }
 
   @Test
@@ -137,8 +143,10 @@ public class MealPlanTest {
             eaten("Обед", 400),
             eaten("Второй обед", 400),
             eaten("Ужин", 400),
-            eaten("Перекусы", 600));
-    assertEquals(300, a.available());
+            eaten("Перекус 1", 225),
+            eaten("Перекус 2", 225),
+            eaten("Перекус 3", 225));
+    assertEquals(225, a.available());
     var b = at("22:00");
     assertEquals(0, b.available());
     assertTrue(b.ended());

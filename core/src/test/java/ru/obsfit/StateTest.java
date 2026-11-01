@@ -81,7 +81,7 @@ public final class StateTest {
     c.returnFromCatalog(Fixtures.day());
     assertEquals("15", c.state.portion.weight);
     assertEquals(Fixtures.DAY, c.state.day.day.source);
-    assertEquals("Перекусы", c.state.portion.section);
+    assertEquals("Перекус 4", c.state.portion.section);
   }
 
   @Test

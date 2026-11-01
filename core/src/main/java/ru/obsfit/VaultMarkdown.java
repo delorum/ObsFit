@@ -10,7 +10,21 @@ public final class VaultMarkdown {
   private VaultMarkdown() {}
 
   public static final List<String> SECTIONS =
-      List.of("Заметки", "Завтрак", "Обед", "Второй обед", "Ужин", "Перекусы");
+      List.of(
+          "Заметки",
+          "Завтрак",
+          "Перекус 1",
+          "Обед",
+          "Перекус 2",
+          "Второй обед",
+          "Перекус 3",
+          "Ужин",
+          "Перекус 4");
+
+  public static String sectionName(String name) {
+    return "Перекусы".equals(name) ? "Перекус 4" : name;
+  }
+
   private static final String NUM = "\\d+(?:[.,]\\d+)?";
   private static final Pattern READY =
       Pattern.compile(
@@ -406,6 +420,7 @@ public final class VaultMarkdown {
     }
 
     public List<Entry> section(String name) {
+      name = sectionName(name);
       List<Entry> items = new ArrayList<>();
       for (Entry e : entries) if (e.section.equals(name)) items.add(e);
       return items;
@@ -465,7 +480,8 @@ public final class VaultMarkdown {
       if (!text[i]) continue;
       Matcher heading = HEADING.matcher(s);
       if (heading.matches()) {
-        section = SECTIONS.contains(heading.group(2)) ? heading.group(2) : "Заметки";
+        String headingSection = sectionName(heading.group(2));
+        section = SECTIONS.contains(headingSection) ? headingSection : "Заметки";
         continue;
       }
       if (s.startsWith("|")
@@ -567,6 +583,7 @@ public final class VaultMarkdown {
   }
 
   public static String move(String source, Entry entry, String target, Catalog catalog) {
+    target = sectionName(target);
     if (!SECTIONS.contains(target)) throw new IllegalArgumentException("Неизвестный раздел");
     String removed = edit(source, entry, null, catalog);
     return add(removed, target, entry.canonical().trim(), catalog);
@@ -597,11 +614,13 @@ public final class VaultMarkdown {
   }
 
   public static String add(String source, String section, String entry, Catalog catalog) {
+    section = sectionName(section);
     if (!SECTIONS.contains(section) || entry.contains("\n") || entry.contains("\r"))
       throw new IllegalArgumentException("Некорректная запись");
     List<String> lines = new ArrayList<>(Arrays.asList(lines(source)));
     int level = section.equals("Заметки") ? 2 : 3;
     int start = findHeading(lines, section, level);
+    if (start < 0 && section.equals("Перекус 4")) start = findHeading(lines, "Перекусы", level);
     if (start < 0) {
       if (level == 2) {
         ensureBlank(lines);
@@ -617,6 +636,18 @@ public final class VaultMarkdown {
           parent = lines.size() - 2;
         }
         int at = sectionEnd(lines, parent, 2);
+        boolean[] normal = textLines(lines.toArray(String[]::new));
+        for (int i = parent + 1; i < at; i++) {
+          if (!normal[i]) continue;
+          Matcher heading = HEADING.matcher(lines.get(i).trim());
+          if (heading.matches() && heading.group(1).length() == 3) {
+            int order = SECTIONS.indexOf(sectionName(heading.group(2)));
+            if (order > SECTIONS.indexOf(section)) {
+              at = i;
+              break;
+            }
+          }
+        }
         lines.addAll(at, List.of("", "### " + section, ""));
         start = at + 1;
       }

@@ -166,7 +166,7 @@ public final class AppController {
     }
     state.selected = LocalDate.parse(saved.selected());
     state.expanded.clear();
-    state.expanded.addAll(saved.expanded());
+    for (String section : saved.expanded()) state.expanded.add(VaultMarkdown.sectionName(section));
     state.catalogQuery = saved.catalogQuery();
     state.scrollY = saved.scrollY();
     state.pendingBarcode = saved.pendingBarcode();

@@ -50,7 +50,7 @@ public final class PortionForm {
         new CatalogForm(
             new VaultRepository.CatalogSnapshot(original.foodText, original.replacementsText),
             null);
-    this.section = section;
+    this.section = VaultMarkdown.sectionName(section);
     this.entry = entry;
     this.choosing = entry == null;
     if (entry != null) {

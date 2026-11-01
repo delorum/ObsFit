@@ -24,12 +24,13 @@ public final class MealPlan {
   public static final List<Slot> SLOTS =
       List.of(
           slot("Завтрак", "Завтрак", "09:00", "10:00", 500),
-          slot("Перекус", "Перекусы", "11:00", "12:00", 300),
+          slot("Перекус 1", "Перекус 1", "11:00", "12:00", 225),
           slot("Обед", "Обед", "13:00", "14:00", 400),
-          slot("Перекус", "Перекусы", "15:00", "16:00", 300),
+          slot("Перекус 2", "Перекус 2", "15:00", "16:00", 225),
           slot("Второй обед", "Второй обед", "17:00", "18:00", 400),
+          slot("Перекус 3", "Перекус 3", "18:00", "19:00", 225),
           slot("Ужин", "Ужин", "19:00", "20:00", 400),
-          slot("Перекус", "Перекусы", "21:00", "22:00", 300));
+          slot("Перекус 4", "Перекус 4", "21:00", "22:00", 225));
 
   private static Slot slot(String name, String section, String from, String to, int kcal) {
     return new Slot(name, section, LocalTime.parse(from), LocalTime.parse(to), kcal);
@@ -46,22 +47,7 @@ public final class MealPlan {
       total += entry.calories;
       int index = mainMeal(entry.section);
       if (index >= 0) consumed[index] += entry.calories;
-      else if (entry.section.equals("Перекусы")) {
-        approximate |= entry.calories > 0;
-        // Untimed legacy snacks are filled chronologically, never guessed as a future snack.
-        double rest = entry.calories;
-        int last = -1;
-        for (int i = 0; i < SLOTS.size(); i++) {
-          Slot slot = SLOTS.get(i);
-          if (!slot.section.equals("Перекусы") || slot.start.isAfter(time)) continue;
-          last = i;
-          double take = Math.min(rest, Math.max(0, slot.calories - consumed[i]));
-          consumed[i] += take;
-          rest -= take;
-        }
-        if (last >= 0) consumed[last] += rest;
-        else unassigned += rest;
-      } else {
+      else {
         unassigned += entry.calories;
         approximate |= entry.calories > 0;
       }
@@ -106,7 +92,7 @@ public final class MealPlan {
   }
 
   private static int mainMeal(String section) {
-    if (section.equals("Перекусы") || section.equals("Заметки")) return -1;
+    section = VaultMarkdown.sectionName(section);
     for (int i = 0; i < SLOTS.size(); i++) if (SLOTS.get(i).section.equals(section)) return i;
     return -1;
   }
