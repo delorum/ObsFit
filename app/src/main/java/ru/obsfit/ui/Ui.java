@@ -53,9 +53,20 @@ public final class Ui {
 
   public LinearLayout row() {
     LinearLayout l = new LinearLayout(activity);
-    l.setOrientation(LinearLayout.HORIZONTAL);
-    l.setGravity(Gravity.CENTER_VERTICAL);
+    configureRow(l);
     return l;
+  }
+
+  /** One spacing rule for all horizontal content, including weighted buttons and clickable rows. */
+  private void configureRow(LinearLayout row) {
+    row.setOrientation(LinearLayout.HORIZONTAL);
+    row.setGravity(Gravity.CENTER_VERTICAL);
+    row.setBaselineAligned(false);
+    GradientDrawable spacer = new GradientDrawable();
+    spacer.setColor(android.graphics.Color.TRANSPARENT);
+    spacer.setSize(dp(8), 0);
+    row.setDividerDrawable(spacer);
+    row.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
   }
 
   public static final class ClickRow extends LinearLayout {
@@ -72,7 +83,9 @@ public final class Ui {
   }
 
   public ClickRow clickRow() {
-    return new ClickRow(activity);
+    ClickRow row = new ClickRow(activity);
+    configureRow(row);
+    return row;
   }
 
   public GradientDrawable background(int color, int radius) {
@@ -127,11 +140,9 @@ public final class Ui {
     return b;
   }
 
-  /** Layout dimensions in dp; keeps horizontal actions apart without adding rows. */
-  public LinearLayout.LayoutParams spacedAction(int width, int height) {
-    var params = new LinearLayout.LayoutParams(dp(width), dp(height));
-    params.setMarginStart(dp(8));
-    return params;
+  /** Layout dimensions in dp. Spacing belongs to the containing row. */
+  public LinearLayout.LayoutParams actionLayout(int width, int height) {
+    return new LinearLayout.LayoutParams(dp(width), dp(height));
   }
 
   public void gap(LinearLayout parent, int height) {
@@ -159,7 +170,6 @@ public final class Ui {
     bar.setPadding(dp(16), dp(4), dp(16), dp(4));
     if (back != null) {
       var backParams = new LinearLayout.LayoutParams(dp(48), dp(52));
-      backParams.setMarginEnd(dp(8));
       bar.addView(icon("‹", "Назад", back), backParams);
     }
     LinearLayout titles = column();
@@ -174,7 +184,7 @@ public final class Ui {
               action.longClick().run();
               return true;
             });
-      bar.addView(b, spacedAction(48, 52));
+      bar.addView(b, actionLayout(48, 52));
     }
     root.addView(bar);
     progress = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
@@ -208,6 +218,10 @@ public final class Ui {
     edit.setTextColor(INK);
     edit.setTextSize(17);
     edit.setSingleLine(true);
+    edit.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+    edit.setIncludeFontPadding(false);
+    edit.setPaddingRelative(dp(16), dp(16), dp(16), dp(16));
+    edit.setMinHeight(dp(56));
     edit.setInputType(
         decimal
             ? InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL

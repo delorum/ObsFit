@@ -111,12 +111,13 @@ public final class UiDialogs {
   }
 
   public void barcode(Consumer<String> selected) {
-    EditText code = new EditText(ui.activity);
+    LinearLayout fields = ui.column();
+    fields.setPadding(ui.dp(20), ui.dp(12), ui.dp(20), 0);
+    EditText code = ui.field(fields, "Штрихкод упаковки", "", false, true);
     code.setInputType(InputType.TYPE_CLASS_NUMBER);
-    code.setHint("Штрихкод упаковки");
     new MaterialAlertDialogBuilder(ui.activity)
         .setTitle("Поиск товара")
-        .setView(code)
+        .setView(fields)
         .setNegativeButton("Отмена", null)
         .setPositiveButton("Найти", (d, w) -> selected.accept(code.getText().toString().trim()))
         .show();

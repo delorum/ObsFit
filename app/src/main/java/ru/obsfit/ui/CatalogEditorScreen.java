@@ -158,7 +158,6 @@ public final class CatalogEditorScreen {
           ui.button(VaultMarkdown.fmt(item.grams()) + " г", () -> picker.weight(null, index));
       weightButton.setContentDescription("Изменить вес: " + item.name());
       var weightParams = new LinearLayout.LayoutParams(-2, -2);
-      weightParams.setMarginStart(ui.dp(8));
       row.addView(weightButton, weightParams);
       row.addView(
           ui.icon(
@@ -170,7 +169,7 @@ public final class CatalogEditorScreen {
                 renderIngredients();
                 preview();
               }),
-          ui.spacedAction(44, 48));
+          ui.actionLayout(44, 48));
       list.addView(row);
     }
   }

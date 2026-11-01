@@ -62,7 +62,6 @@ public final class DayScreen {
     prev.setAlpha(prev.isEnabled() ? 1f : .28f);
     next.setAlpha(next.isEnabled() ? 1f : .28f);
     var prevParams = new LinearLayout.LayoutParams(ui.dp(48), ui.dp(52));
-    prevParams.setMarginEnd(ui.dp(8));
     dates.addView(prev, prevParams);
     LinearLayout label = ui.column();
     TextView date =
@@ -84,7 +83,7 @@ public final class DayScreen {
     label.setContentDescription("Выбрать дату");
     label.setOnClickListener(v -> actions.chooseDate());
     ui.weighted(dates, label);
-    dates.addView(next, ui.spacedAction(48, 52));
+    dates.addView(next, ui.actionLayout(48, 52));
     ui.body.addView(dates);
     ui.gap(ui.body, 20);
     double total = state.day.day.total;
@@ -118,11 +117,10 @@ public final class DayScreen {
     LinearLayout heading = ui.row();
     ui.weighted(heading, ui.bold((state.expanded.contains(name) ? "⌄  " : "›  ") + name, 18, INK));
     TextView sectionCalories = ui.text(VaultMarkdown.fmt(total) + " ккал", 14, ACCENT);
-    sectionCalories.setPaddingRelative(ui.dp(8), ui.dp(5), 0, ui.dp(5));
     heading.addView(sectionCalories);
     heading.addView(
         ui.icon("＋", "Добавить еду: " + name, () -> actions.portion(name, null)),
-        ui.spacedAction(48, 48));
+        ui.actionLayout(48, 48));
     heading.setMinimumHeight(ui.dp(48));
     heading.setContentDescription(
         name
@@ -158,7 +156,7 @@ public final class DayScreen {
     row.addView(ui.bold(VaultMarkdown.fmt(entry.kcal) + " ккал", 16, INK));
     row.addView(
         ui.icon("⋮", "Действия с записью", () -> actions.entryMenu(entry)),
-        ui.spacedAction(40, 48));
+        ui.actionLayout(40, 48));
     row.setContentDescription(
         (entry.name.isBlank() ? "Калории" : entry.name)
             + ", "
