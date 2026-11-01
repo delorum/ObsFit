@@ -94,6 +94,16 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         });
   }
 
+  private final Runnable mealClock =
+      new Runnable() {
+        @Override
+        public void run() {
+          if (!resumed) return;
+          ui.updateClock();
+          handler.postDelayed(this, 1000);
+        }
+      };
+
   private final Runnable poll =
       new Runnable() {
         @Override
@@ -149,6 +159,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   protected void onResume() {
     super.onResume();
     resumed = true;
+    handler.removeCallbacks(mealClock);
+    handler.post(mealClock);
     handler.removeCallbacks(poll);
     handler.postDelayed(poll, 12000);
     if (attached && repo != null && state.screen == AppState.Screen.DAY && state.day != null)
@@ -161,6 +173,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     resumed = false;
     handler.removeCallbacks(poll);
     handler.removeCallbacks(providerChanged);
+    handler.removeCallbacks(mealClock);
     if (observer != null) observer.close();
     super.onPause();
   }
@@ -169,6 +182,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   protected void onDestroy() {
     handler.removeCallbacks(poll);
     handler.removeCallbacks(providerChanged);
+    handler.removeCallbacks(mealClock);
     if (observer != null) observer.close();
     io.shutdown();
     super.onDestroy();

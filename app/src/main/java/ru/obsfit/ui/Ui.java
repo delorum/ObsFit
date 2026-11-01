@@ -36,6 +36,24 @@ public final class Ui {
   public ScrollView scroll;
   private ProgressBar progress;
   private TextView error;
+  private Runnable clockUpdate;
+
+  public void updateClock() {
+    if (clockUpdate != null) clockUpdate.run();
+  }
+
+  public void clockHint(LinearLayout parent, java.util.function.Supplier<String> message) {
+    TextView hint = text("", 14, MUTED);
+    hint.setPadding(0, dp(12), 0, dp(5));
+    parent.addView(hint);
+    clockUpdate =
+        () -> {
+          String value = message.get();
+          if (!value.contentEquals(hint.getText())) hint.setText(value);
+          hint.setVisibility(value.isEmpty() ? View.GONE : View.VISIBLE);
+        };
+    updateClock();
+  }
 
   public Ui(AppCompatActivity activity) {
     this.activity = activity;
@@ -155,6 +173,7 @@ public final class Ui {
 
   public void page(
       String title, String subtitle, Runnable back, List<Action> actions, boolean busy) {
+    clockUpdate = null;
     LinearLayout root = column();
     root.setBackgroundColor(BG);
     ViewCompat.setOnApplyWindowInsetsListener(

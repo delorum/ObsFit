@@ -87,19 +87,22 @@ public final class DayScreen {
     ui.body.addView(dates);
     ui.gap(ui.body, 20);
     double total = state.day.day.total;
-    int color = total > 2600 ? RED : total >= 2500 ? YELLOW : GREEN;
+    int color = total > MealPlan.DAILY ? RED : total >= MealPlan.DAILY - 100 ? YELLOW : GREEN;
     LinearLayout calories = ui.column();
     calories.setBackground(ui.background(CARD, 22));
     calories.setPadding(ui.dp(20), ui.dp(16), ui.dp(20), ui.dp(20));
     calories.addView(ui.text("СЪЕДЕНО ЗА ДЕНЬ", 11, MUTED));
-    calories.addView(ui.bold(VaultMarkdown.fmt(total) + " / 2600 ккал", 30, color));
+    calories.addView(
+        ui.bold(VaultMarkdown.fmt(total) + " / " + MealPlan.DAILY + " ккал", 30, color));
     LinearProgressIndicator progress = new LinearProgressIndicator(ui.activity);
-    progress.setMax(2600);
-    progress.setProgress((int) Math.min(total, 2600));
+    progress.setMax(MealPlan.DAILY);
+    progress.setProgress((int) Math.min(total, MealPlan.DAILY));
     progress.setIndicatorColor(color);
     progress.setTrackColor(0xff3b4350);
     progress.setTrackCornerRadius(ui.dp(4));
     calories.addView(progress, new LinearLayout.LayoutParams(-1, ui.dp(8)));
+    ui.clockHint(
+        calories, () -> MealPlan.hint(state.day.note.date, LocalDateTime.now(), state.day.day));
     ui.body.addView(calories);
     ui.gap(ui.body, 20);
     for (String section : VaultMarkdown.SECTIONS) section(section);
