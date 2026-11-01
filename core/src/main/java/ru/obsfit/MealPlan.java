@@ -150,10 +150,8 @@ public final class MealPlan {
     String at = advice.next.start.format(HHMM);
     String tomorrow = advice.nextAt.toLocalDate().isAfter(date) ? "завтра, " : "";
     long millis = Math.max(0, Duration.between(now, advice.nextAt).toMillis());
-    long seconds = (millis + 999) / 1000;
-    String wait =
-        String.format(
-            Locale.ROOT, "%02d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60);
+    long minutes = (millis + 59_999) / 60_000;
+    String wait = String.format(Locale.ROOT, "%02d:%02d", minutes / 60, minutes % 60);
     String next = nextName + ": ≈ " + advice.nextCalories + " ккал · " + tomorrow + at;
     if (advice.now != null && advice.available > 0)
       return advice.now.name

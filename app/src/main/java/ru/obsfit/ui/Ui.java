@@ -153,6 +153,17 @@ public final class Ui {
         });
     b.setIncludeFontPadding(false);
     b.setPadding(0, 0, 0, 0);
+    if (icon.equals("↻")) {
+      b.setText("");
+      b.setIcon(
+          androidx.appcompat.content.res.AppCompatResources.getDrawable(
+              activity, ru.obsfit.R.drawable.ic_refresh));
+      b.setIconTint(ColorStateList.valueOf(INK));
+      b.setIconSize(dp(32));
+      b.setIconPadding(0);
+      b.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+      b.setGravity(Gravity.CENTER);
+    }
     b.setContentDescription(description);
     ViewCompat.setTooltipText(b, description);
     return b;

@@ -16,4 +16,4 @@
 - Экраны и общие виджеты находятся в `app/.../ui`; данные формы не должны храниться в Android-полях.
 - Работа с документами Android реализует `VaultStorage`; проверки сохранения и конфликтов относятся к `VaultRepository`.
 - Для свайпов используйте общий `Swipes`/`SwipeTracker`, не копируйте обработчик на новый экран.
-- Проверка изменений: `./gradlew :core:test :app:assembleDebug :app:lintDebug`. Подробности в `ARCHITECTURE.md`.
+- Проверка изменений: `./gradlew :core:test :app:assembleDebug :app:lintDebug`, затем `python3 tools/check-apk-alignment.py app/build/outputs/apk/debug/app-debug.apk`. Подробности в `ARCHITECTURE.md`.

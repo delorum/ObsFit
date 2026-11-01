@@ -100,7 +100,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         public void run() {
           if (!resumed) return;
           ui.updateClock();
-          handler.postDelayed(this, 1000);
+          long untilNextMinute = 60_000 - System.currentTimeMillis() % 60_000;
+          handler.postDelayed(this, untilNextMinute);
         }
       };
 

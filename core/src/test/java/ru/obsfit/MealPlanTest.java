@@ -175,20 +175,20 @@ public class MealPlanTest {
   }
 
   @Test
-  public void countdownUpdatesFromClockAndDoesNotChangeDiaryText() {
+  public void countdownUsesRoundedMinutesAndDoesNotChangeDiaryText() {
     var day = Fixtures.day();
-    String first = MealPlan.hint(DAY, DAY.atTime(8, 59, 50), day.day);
-    String second = MealPlan.hint(DAY, DAY.atTime(8, 59, 51), day.day);
-    assertTrue(first.contains("00:00:10"));
-    assertTrue(second.contains("00:00:09"));
+    String first = MealPlan.hint(DAY, DAY.atTime(8, 58, 50), day.day);
+    String second = MealPlan.hint(DAY, DAY.atTime(8, 59, 0), day.day);
+    assertTrue(first.contains("через 00:02"));
+    assertTrue(second.contains("через 00:01"));
     assertEquals(Fixtures.DAY, day.day.source);
   }
 
   @Test
-  public void lastFractionOfASecondStillShowsOneSecondRemaining() {
+  public void lastFractionOfASecondStillShowsOneMinuteRemaining() {
     assertTrue(
         MealPlan.hint(DAY, DAY.atTime(8, 59, 59, 500_000_000), Fixtures.day().day)
-            .contains("00:00:01"));
+            .contains("через 00:01"));
   }
 
   @Test
