@@ -2,7 +2,7 @@ plugins { id("com.android.application") }
 android {
     namespace = "ru.obsfit"
     compileSdk { version = release(36) { minorApiLevel = 1 } }
-    defaultConfig { applicationId = "ru.obsfit"; minSdk = 33; targetSdk = 36; versionCode = 12; versionName = "0.2.0" }
+    defaultConfig { applicationId = "ru.obsfit"; minSdk = 33; targetSdk = 36; versionCode = 13; versionName = "0.2.1" }
     buildFeatures { buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     buildTypes { release { isMinifyEnabled = false } }
