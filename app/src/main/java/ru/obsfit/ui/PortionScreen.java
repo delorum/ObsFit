@@ -39,6 +39,25 @@ public final class PortionScreen {
   private final PortionForm form;
   private final Actions actions;
   private final ToLongFunction<VaultMarkdown.Food> recent;
+  private EditText defaultWeightField, kcalField, portionWeightField;
+  private boolean refreshing;
+
+  private void updateRecipeFields() {
+    form.recalculateRecipe();
+    refreshing = true;
+    if (defaultWeightField != null) {
+      defaultWeightField.setEnabled(!form.recipe());
+      if (!defaultWeightField.getText().toString().equals(form.defaultWeight))
+        defaultWeightField.setText(form.defaultWeight);
+    }
+    if (kcalField != null) {
+      kcalField.setEnabled(!form.recipe() && (form.newFood || form.selectedFood == null));
+      if (!kcalField.getText().toString().equals(form.kcal100)) kcalField.setText(form.kcal100);
+    }
+    if (portionWeightField != null && !portionWeightField.getText().toString().equals(form.weight))
+      portionWeightField.setText(form.weight);
+    refreshing = false;
+  }
 
   public PortionScreen(
       Ui ui, AppState state, Actions actions, ToLongFunction<VaultMarkdown.Food> recent) {
@@ -126,6 +145,7 @@ public final class PortionScreen {
   }
 
   private void fields() {
+    form.recalculateRecipe();
     if (form.newFood) {
       ui.body.addView(
           ui.button("▣  Сканировать штрихкод", () -> actions.scan(AppState.ScanTarget.PORTION)));
@@ -177,11 +197,12 @@ public final class PortionScreen {
     }
     ui.gap(ui.body, 10);
     if (form.newFood) {
-      EditText defaultWeight =
-          ui.field(ui.body, "Вес по умолчанию, г", form.defaultWeight, true, true);
+      defaultWeightField =
+          ui.field(ui.body, "Вес по умолчанию, г", form.defaultWeight, true, !form.recipe());
       ui.watch(
-          defaultWeight,
+          defaultWeightField,
           value -> {
+            if (refreshing) return;
             form.defaultWeight = value;
             form.dirty = true;
           });
@@ -206,28 +227,45 @@ public final class PortionScreen {
             update.run();
           });
     } else {
-      EditText weight = ui.field(ui.body, "Вес порции, г", form.weight, true, true);
-      EditText kcal =
+      portionWeightField = ui.field(ui.body, "Вес порции, г", form.weight, true, true);
+      kcalField =
           ui.field(
               ui.body,
               "Калорийность на 100 г",
               form.kcal100,
               true,
-              form.newFood || form.selectedFood == null);
+              !form.recipe() && (form.newFood || form.selectedFood == null));
       ui.watch(
-          weight,
+          portionWeightField,
           value -> {
+            if (refreshing) return;
+            form.portionWeightEdited = true;
             form.weight = value;
             form.dirty = true;
             update.run();
           });
       ui.watch(
-          kcal,
+          kcalField,
           value -> {
+            if (refreshing) return;
             form.kcal100 = value;
             form.dirty = true;
             update.run();
           });
+    }
+    if (form.newFood) {
+      new IngredientSection(
+              ui,
+              state,
+              form.composition,
+              () -> {
+                form.dirty = true;
+                updateRecipeFields();
+                update.run();
+              },
+              recent)
+          .render(ui.body);
+      updateRecipeFields();
     }
     ui.body.addView(total);
     ui.gap(ui.body, 12);

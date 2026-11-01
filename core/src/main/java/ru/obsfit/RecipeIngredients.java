@@ -11,6 +11,25 @@ public final class RecipeIngredients {
 
   public record Item(String name, double grams) {}
 
+  public record Nutrition(double weight, double kcal100) {}
+
+  public static Nutrition nutrition(VaultMarkdown.Catalog catalog, List<Item> items) {
+    double weight = 0, calories = 0;
+    for (Item item : items) {
+      VaultMarkdown.Food food = catalog.get(item.name());
+      if (food == null || !food.ingredients.isEmpty())
+        throw new IllegalArgumentException(
+            "Ингредиент не найден среди простых продуктов: " + item.name());
+      double amount = grams(item.grams());
+      weight += amount;
+      calories += amount * food.kcal100 / 100;
+    }
+    grams(weight);
+    if (!Double.isFinite(calories))
+      throw new IllegalArgumentException("Некорректная калорийность блюда");
+    return new Nutrition(weight, calories * 100 / weight);
+  }
+
   private static final Pattern ROW =
       Pattern.compile(
           "^(.+?)\\s+(\\d+(?:[.,]\\d+)?)\\s*г$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);

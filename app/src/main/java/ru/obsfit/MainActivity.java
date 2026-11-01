@@ -691,7 +691,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         product -> {
           if (!controller.acceptBarcode(recipient, code, product.name(), product.kcal100())) return;
           boolean recipe =
-              state.scanTarget == AppState.ScanTarget.CATALOG && state.catalogForm.recipe();
+              state.scanTarget == AppState.ScanTarget.CATALOG && state.catalogForm.recipe()
+                  || state.scanTarget == AppState.ScanTarget.PORTION && state.portion.recipe();
           redraw();
           toast(
               recipe

@@ -9,6 +9,8 @@ public final class PortionForm {
   public final String section;
   public final VaultMarkdown.Entry entry;
   public VaultMarkdown.Food selectedFood;
+  public final CatalogForm composition;
+  public boolean portionWeightEdited;
   public boolean newFood, manual, dirty, choosing, aliasesExpanded;
   public String name = "",
       aliases = "",
@@ -34,13 +36,20 @@ public final class PortionForm {
       String defaultWeight,
       String kcal100,
       String manualKcal,
-      String query)
+      String query,
+      String ingredients,
+      boolean ingredientsExpanded,
+      boolean portionWeightEdited)
       implements Serializable {}
 
   public record Save(String noteText, VaultMarkdown.Food newFood, String recentName) {}
 
   public PortionForm(VaultRepository.Snapshot original, String section, VaultMarkdown.Entry entry) {
     this.original = original;
+    composition =
+        new CatalogForm(
+            new VaultRepository.CatalogSnapshot(original.foodText, original.replacementsText),
+            null);
     this.section = section;
     this.entry = entry;
     this.choosing = entry == null;
@@ -60,6 +69,9 @@ public final class PortionForm {
   }
 
   public void choose(VaultMarkdown.Food food) {
+    composition.ingredients.clear();
+    composition.ingredientsExpanded = false;
+    portionWeightEdited = false;
     selectedFood = food;
     newFood = false;
     manual = false;
@@ -74,6 +86,9 @@ public final class PortionForm {
   }
 
   public void startNew() {
+    composition.ingredients.clear();
+    composition.ingredientsExpanded = false;
+    portionWeightEdited = false;
     selectedFood = null;
     newFood = true;
     manual = false;
@@ -87,6 +102,9 @@ public final class PortionForm {
   }
 
   public void startManual() {
+    composition.ingredients.clear();
+    composition.ingredientsExpanded = false;
+    portionWeightEdited = false;
     selectedFood = null;
     newFood = false;
     manual = true;
@@ -101,7 +119,24 @@ public final class PortionForm {
     dirty = false;
   }
 
+  public boolean recipe() {
+    return newFood && composition.recipe();
+  }
+
+  public void recalculateRecipe() {
+    if (!recipe()) return;
+    var calculated = RecipeIngredients.nutrition(original.catalog, composition.ingredients);
+    defaultWeight = VaultMarkdown.fmt(calculated.weight());
+    kcal100 = VaultMarkdown.fmt(calculated.kcal100());
+    if (!portionWeightEdited) weight = defaultWeight;
+  }
+
   public double total() {
+    if (recipe())
+      return Math.round(
+          VaultMarkdown.number(weight)
+              * RecipeIngredients.nutrition(original.catalog, composition.ingredients).kcal100()
+              / 100);
     return manual
         ? VaultMarkdown.number(manualKcal)
         : Math.round(VaultMarkdown.number(weight) * VaultMarkdown.number(kcal100) / 100);
@@ -110,13 +145,14 @@ public final class PortionForm {
   public void barcode(String productName, Double calories) {
     if (!newFood) return;
     if (!productName.isBlank()) name = productName;
-    if (calories != null) kcal100 = VaultMarkdown.fmt(calories);
+    if (calories != null && !recipe()) kcal100 = VaultMarkdown.fmt(calories);
     dirty = true;
   }
 
   public Save save() {
     if (entry == null && !manual && !newFood && selectedFood == null)
       throw new IllegalArgumentException("Сначала выберите еду");
+    recalculateRecipe();
     String title = name.trim(), line;
     VaultMarkdown.Food added = null;
     VaultMarkdown.Catalog catalog = original.catalog;
@@ -137,19 +173,22 @@ public final class PortionForm {
         throw new IllegalArgumentException(
             "Описание должно быть одной строкой без Markdown-разметки и веса в конце");
     } else {
-      line =
-          VaultMarkdown.portion(title, VaultMarkdown.number(weight), VaultMarkdown.number(kcal100));
       if (newFood) {
         added =
             new VaultMarkdown.Food(
                 title,
                 aliasLines(aliases),
-                "",
+                RecipeIngredients.toMarkdown(composition.ingredients),
                 VaultMarkdown.number(kcal100),
                 VaultMarkdown.number(defaultWeight));
         catalog =
             VaultMarkdown.catalog(VaultMarkdown.addFood(catalog, added, original.replacementsText));
       }
+      line =
+          VaultMarkdown.portion(
+              title,
+              VaultMarkdown.number(weight),
+              newFood ? catalog.get(title).kcal100 : VaultMarkdown.number(kcal100));
     }
     String updated =
         entry == null
@@ -175,7 +214,10 @@ public final class PortionForm {
         defaultWeight,
         kcal100,
         manualKcal,
-        query);
+        query,
+        RecipeIngredients.toMarkdown(composition.ingredients),
+        composition.ingredientsExpanded,
+        portionWeightEdited);
   }
 
   public static PortionForm restore(VaultRepository.Snapshot snapshot, Draft draft) {
@@ -211,6 +253,17 @@ public final class PortionForm {
     form.defaultWeight = draft.defaultWeight();
     form.manualKcal = draft.manualKcal();
     form.dirty = draft.dirty();
+    try {
+      form.composition.ingredients =
+          RecipeIngredients.parse(
+              snapshot.catalog, draft.ingredients() == null ? "" : draft.ingredients());
+    } catch (IllegalArgumentException error) {
+      throw new IllegalStateException(
+          "Состав блюда изменился в справочнике. Откройте форму заново.", error);
+    }
+    form.composition.ingredientsExpanded = draft.ingredientsExpanded();
+    form.portionWeightEdited = draft.portionWeightEdited();
+    form.recalculateRecipe();
     return form;
   }
 

@@ -188,8 +188,7 @@ public final class VaultMarkdown {
   }
 
   public static String addFood(Catalog catalog, Food food, String replacements) {
-    if (!food.ingredients.isEmpty())
-      throw new IllegalArgumentException("Создание составных блюд доступно в Еда.md");
+    if (!food.ingredients.isEmpty()) return putFood(catalog, null, food, replacements);
     if (food.weight <= 0
         || !Double.isFinite(food.weight)
         || food.kcal100 < 0
