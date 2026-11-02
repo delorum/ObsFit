@@ -5,7 +5,7 @@ import java.math.MathContext;
 import java.util.*;
 import java.util.regex.*;
 
-/** Ingredient selection is flattened to primitive foods, preserving the Obsidian table format. */
+/** Ingredient selection preserves named foods, including nested recipes. */
 public final class RecipeIngredients {
   private RecipeIngredients() {}
 
@@ -17,9 +17,8 @@ public final class RecipeIngredients {
     double weight = 0, calories = 0;
     for (Item item : items) {
       VaultMarkdown.Food food = catalog.get(item.name());
-      if (food == null || !food.ingredients.isEmpty())
-        throw new IllegalArgumentException(
-            "Ингредиент не найден среди простых продуктов: " + item.name());
+      if (food == null)
+        throw new IllegalArgumentException("Неизвестный ингредиент: " + item.name());
       double amount = grams(item.grams());
       weight += amount;
       calories += amount * food.kcal100 / 100;
@@ -41,9 +40,8 @@ public final class RecipeIngredients {
       Matcher match = ROW.matcher(row.trim());
       if (!match.matches()) throw new IllegalArgumentException("Некорректный ингредиент: " + row);
       VaultMarkdown.Food food = catalog.get(match.group(1));
-      if (food == null || !food.ingredients.isEmpty())
-        throw new IllegalArgumentException(
-            "Ингредиент не найден среди простых продуктов: " + match.group(1));
+      if (food == null)
+        throw new IllegalArgumentException("Неизвестный ингредиент: " + match.group(1));
       items.add(new Item(food.name, grams(VaultMarkdown.number(match.group(2)))));
     }
     return items;
@@ -71,11 +69,18 @@ public final class RecipeIngredients {
 
   public static boolean available(
       VaultMarkdown.Catalog catalog, VaultMarkdown.Food food, String excludedName) {
-    if (excludedName == null) return true;
-    if (VaultMarkdown.key(food.name).equals(VaultMarkdown.key(excludedName))) return false;
+    return excludedName == null
+        || !dependsOn(catalog, food, VaultMarkdown.key(excludedName), new HashSet<>());
+  }
+
+  private static boolean dependsOn(
+      VaultMarkdown.Catalog catalog, VaultMarkdown.Food food, String target, Set<String> visited) {
+    String name = VaultMarkdown.key(food.name);
+    if (name.equals(target)) return true;
+    if (!visited.add(name)) return false;
     for (Item item : parse(catalog, food.ingredients))
-      if (VaultMarkdown.key(item.name()).equals(VaultMarkdown.key(excludedName))) return false;
-    return true;
+      if (dependsOn(catalog, catalog.get(item.name()), target, visited)) return true;
+    return false;
   }
 
   public static List<Item> add(
@@ -89,14 +94,9 @@ public final class RecipeIngredients {
     weight = grams(weight);
     if (!available(catalog, selected, excludedName))
       throw new IllegalArgumentException("Продукт не может входить в собственный состав");
-    List<Item> added =
-        selected.ingredients.isEmpty()
-            ? List.of(new Item(selected.name, weight))
-            : parse(catalog, selected.ingredients);
-    double factor = selected.ingredients.isEmpty() ? 1 : weight / selected.weight;
     LinkedHashMap<String, Item> merged = new LinkedHashMap<>();
     for (Item item : current) merge(merged, item);
-    for (Item item : added) merge(merged, new Item(item.name(), grams(item.grams() * factor)));
+    merge(merged, new Item(selected.name, weight));
     return new ArrayList<>(merged.values());
   }
 

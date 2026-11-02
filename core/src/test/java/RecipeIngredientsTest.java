@@ -44,12 +44,13 @@ public final class RecipeIngredientsTest {
     equal("белый хлеб 20 г", RecipeIngredients.toMarkdown(base));
     var combined = RecipeIngredients.add(catalog, base, "ббр", 30, null);
     equal(2, combined.size());
-    near(40, combined.get(0).grams());
-    near(10, combined.get(1).grams());
+    near(20, combined.get(0).grams());
+    equal("бутерброд", combined.get(1).name());
+    near(30, combined.get(1).grams());
     equal("белый хлеб 20 г", RecipeIngredients.toMarkdown(base));
     var doublePortion = RecipeIngredients.add(catalog, List.of(), "бутерброд", 120, null);
-    near(80, doublePortion.get(0).grams());
-    near(40, doublePortion.get(1).grams());
+    equal(1, doublePortion.size());
+    near(120, doublePortion.get(0).grams());
     var input =
         new VaultMarkdown.Food(
             "новый бутер", List.of("нб"), RecipeIngredients.toMarkdown(combined), 0, 0);
@@ -69,7 +70,9 @@ public final class RecipeIngredientsTest {
     rejects(() -> RecipeIngredients.grams(Double.POSITIVE_INFINITY));
     near(.001, RecipeIngredients.grams(.001));
     near(12.345, RecipeIngredients.grams(12.345));
-    rejects(() -> RecipeIngredients.parse(catalog, "ббр 20 г"));
+    equal(
+        "бутерброд 20 г",
+        RecipeIngredients.toMarkdown(RecipeIngredients.parse(catalog, "ббр 20 г")));
     rejects(() -> RecipeIngredients.parse(catalog, "нет 20 г"));
     var restored = RecipeIngredients.parse(catalog, "бт 20 г\nклб 10 г");
     equal(2, restored.size());

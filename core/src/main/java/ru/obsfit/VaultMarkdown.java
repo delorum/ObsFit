@@ -153,36 +153,34 @@ public final class VaultMarkdown {
       }
       foods.add(food);
     }
-    Pattern ingredient =
-        Pattern.compile(
-            "^(.+?)\\s+(" + NUM + ")\\s*г$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    for (Food food : foods)
-      if (!food.ingredients.isEmpty()) {
-        double weight = 0, kcal = 0;
-        for (String item : br(food.ingredients)) {
-          Matcher m = ingredient.matcher(item);
-          if (!m.matches())
-            throw new IllegalArgumentException(
-                food.name + ": ингредиент должен иметь вид «хлеб 40 г»");
-          Food base = index.get(key(m.group(1)));
-          if (base == null || !base.ingredients.isEmpty())
-            throw new IllegalArgumentException(
-                food.name
-                    + ": ингредиент «"
-                    + m.group(1)
-                    + "» должен быть простой едой из таблицы");
-          double grams = number(m.group(2));
-          if (grams <= 0)
-            throw new IllegalArgumentException("Вес ингредиента должен быть больше нуля");
-          weight += grams;
-          kcal += base.kcal100 * grams / 100;
-        }
-        if (weight <= 0 || !Double.isFinite(kcal))
-          throw new IllegalArgumentException("Некорректный состав: " + food.name);
-        food.weight = weight;
-        food.kcal100 = kcal * 100 / weight;
-      }
-    return new Catalog(List.copyOf(foods), Collections.unmodifiableMap(index), content);
+    Catalog result = new Catalog(List.copyOf(foods), Collections.unmodifiableMap(index), content);
+    Set<Food> calculated = new HashSet<>();
+    List<Food> visiting = new ArrayList<>();
+    for (Food food : foods) calculateRecipe(result, food, calculated, visiting);
+    return result;
+  }
+
+  private static void calculateRecipe(
+      Catalog catalog, Food food, Set<Food> calculated, List<Food> visiting) {
+    if (calculated.contains(food)) return;
+    int cycle = visiting.indexOf(food);
+    if (cycle >= 0) {
+      List<String> names = new ArrayList<>();
+      for (Food item : visiting.subList(cycle, visiting.size())) names.add(item.name);
+      names.add(food.name);
+      throw new IllegalArgumentException("Циклический состав: " + String.join(" → ", names));
+    }
+    if (!food.ingredients.isEmpty()) {
+      visiting.add(food);
+      List<RecipeIngredients.Item> items = RecipeIngredients.parse(catalog, food.ingredients);
+      for (RecipeIngredients.Item item : items)
+        calculateRecipe(catalog, catalog.get(item.name()), calculated, visiting);
+      RecipeIngredients.Nutrition nutrition = RecipeIngredients.nutrition(catalog, items);
+      food.weight = nutrition.weight();
+      food.kcal100 = nutrition.kcal100();
+      visiting.remove(visiting.size() - 1);
+    }
+    calculated.add(food);
   }
 
   public static Set<String> replacementNames(String content) {

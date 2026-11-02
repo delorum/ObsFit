@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.function.ToLongFunction;
 import ru.obsfit.*;
 
-/** Dialog widgets only; adding, changing weights and flattening recipes belong to CatalogForm. */
+/** Dialog widgets only; adding ingredients and changing weights belong to CatalogForm. */
 final class IngredientPicker {
   private final Ui ui;
   private final AppState state;
@@ -98,11 +98,7 @@ final class IngredientPicker {
     double initial = selected == null ? form.ingredients.get(index).grams() : selected.weight;
     EditText weight = ui.field(body, "Вес, г", VaultMarkdown.fmt(initial), true, true);
     if (selected != null && !selected.ingredients.isEmpty())
-      body.addView(
-          ui.text(
-              "Блюдо будет разложено на простые ингредиенты пропорционально указанному весу.",
-              13,
-              MUTED));
+      body.addView(ui.text("Блюдо добавится одним ингредиентом с указанным весом.", 13, MUTED));
     var dialog =
         new MaterialAlertDialogBuilder(ui.activity)
             .setTitle(name)

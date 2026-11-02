@@ -131,12 +131,14 @@ public final class CatalogTest {
                 "бутерброд",
                 food("бутерброд", List.of(), "неизвестно 40 г", 0, 0),
                 replacements),
-        "простой едой");
-    rejects(
-        () ->
-            VaultMarkdown.putFood(
-                catalog, "хлеб", food("хлеб", List.of(), "сыр 30 г", 0, 0), replacements),
-        "простой едой");
+        "Неизвестный ингредиент");
+    near(
+        300,
+        VaultMarkdown.catalog(
+                VaultMarkdown.putFood(
+                    catalog, "хлеб", food("хлеб", List.of(), "сыр 30 г", 0, 0), replacements))
+            .get("хлеб")
+            .kcal100);
     rejects(() -> VaultMarkdown.deleteFood(catalog, "нет"), "изменился");
     rejects(
         () ->
