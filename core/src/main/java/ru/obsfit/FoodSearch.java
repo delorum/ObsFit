@@ -42,24 +42,22 @@ public final class FoodSearch {
     if (query.isEmpty() || query.equals(name)) return 0;
     if (name.startsWith(query)) return 10;
     if (name.contains(query)) return 20;
-    // Bound approximate work; long literal matches still work above.
-    if (query.length() > 128 || name.length() > 256) return NONE;
+    String compact = name.replace(" ", ""), needle = query.replace(" ", "");
+    int ordered = subsequence(needle, compact) ? 70 + compact.length() - needle.length() : NONE;
+    // Only typo matching is bounded. Ordered letters must match names of any length.
+    if (query.length() > 128 || name.length() > 256) return ordered;
     String[] words = name.split(" +"), tokens = query.split(" +");
     if (tokens.length > 1) {
       // Assign distinct words to query tokens, irrespective of their order.
-      if (tokens.length > words.length) return NONE;
+      if (tokens.length > words.length) return ordered;
       int cost = assign(tokens, words);
-      if (cost != NONE) return 30 + cost;
+      if (cost != NONE) return Math.min(30 + cost, ordered);
     } else {
       int best = NONE;
       for (String word : words) best = Math.min(best, wordScore(query, word));
-      if (best != NONE) return 30 + best;
+      if (best != NONE) return Math.min(30 + best, ordered);
     }
-    String compact = name.replace(" ", ""), needle = query.replace(" ", "");
-    if (needle.length() >= 3
-        && compact.length() <= needle.length() * 3
-        && subsequence(needle, compact)) return 70 + compact.length() - needle.length();
-    return NONE;
+    return ordered;
   }
 
   private static int wordScore(String query, String word) {
@@ -73,8 +71,7 @@ public final class FoodSearch {
         if (edits <= allowed) return 10 + edits * 3;
       }
     }
-    if (query.length() >= 2 && word.length() <= query.length() * 3 && subsequence(query, word))
-      return 22 + word.length() - query.length();
+    if (query.length() >= 2 && subsequence(query, word)) return 22 + word.length() - query.length();
     return NONE;
   }
 
