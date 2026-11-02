@@ -82,8 +82,17 @@ final class Fixtures {
       data.put(path, path.equals(truncateWrite) ? text.substring(0, text.length() / 2) : text);
     }
 
-    public List<String> files(String path) {
-      return data.keySet().stream().filter(p -> p.startsWith(path + "/")).toList();
+    public List<Entry> children(String directory) {
+      Map<String, Entry> children = new LinkedHashMap<>();
+      String prefix = directory + "/";
+      for (String path : data.keySet()) {
+        if (!path.startsWith(prefix)) continue;
+        String relative = path.substring(prefix.length());
+        int slash = relative.indexOf('/');
+        String child = prefix + (slash < 0 ? relative : relative.substring(0, slash));
+        children.put(child, new Entry(child, slash >= 0));
+      }
+      return List.copyOf(children.values());
     }
   }
 

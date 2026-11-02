@@ -33,7 +33,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   private SafVaultStorage storage;
   private FileBackups backups;
   private AppState.Saved restoring;
-  private boolean attached, resumed, checkingDay;
+  private boolean attached, resumed, checkingDay, extendingNotes;
   private VaultObserver observer;
   private boolean resumeCheckPending;
   private final Runnable providerChanged = () -> checkDay(false);
@@ -90,6 +90,32 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
                   // errors.
                   if (!isDestroyed() && resumeCheckPending) checkDay(false);
                 });
+          }
+        });
+  }
+
+  private void prefetchNotes() {
+    if (isDestroyed()
+        || !resumed
+        || extendingNotes
+        || repo == null
+        || state.screen != AppState.Screen.DAY
+        || state.day == null) return;
+    extendingNotes = true;
+    var source = repo;
+    var selected = state.selected;
+    io.execute(
+        () -> {
+          try {
+            var notes = source.moreNotes(selected);
+            runOnUiThread(
+                () -> {
+                  extendingNotes = false;
+                  if (!isDestroyed() && repo == source && !state.busy) state.notes = notes;
+                });
+          } catch (Exception error) {
+            android.util.Log.d("ObsFitDays", "Day prefetch failed; retry on navigation", error);
+            runOnUiThread(() -> extendingNotes = false);
           }
         });
   }
@@ -320,10 +346,10 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
           SafVaultStorage candidateStorage = new SafVaultStorage(this, uri);
           VaultRepository candidate = new VaultRepository(candidateStorage, backups);
           candidate.validateRoot();
-          var notes = candidate.notes();
+          LocalDate wanted = saved == null ? LocalDate.now() : LocalDate.parse(saved.selected());
+          var notes = candidate.notes(wanted, true);
           VaultRepository.Snapshot day = null;
           if (!notes.isEmpty()) {
-            LocalDate wanted = saved == null ? LocalDate.now() : LocalDate.parse(saved.selected());
             LocalDate selected =
                 notes.stream().anyMatch(n -> n.date.equals(wanted))
                     ? wanted
@@ -332,7 +358,14 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
                 notes.stream().filter(n -> n.date.equals(selected)).findFirst().orElseThrow();
             day = candidate.load(note);
           }
-          return new Initial(candidateStorage, candidate, notes, day, candidate.loadCatalog());
+          return new Initial(
+              candidateStorage,
+              candidate,
+              notes,
+              day,
+              day == null
+                  ? candidate.loadCatalog()
+                  : new VaultRepository.CatalogSnapshot(day.foodText, day.replacementsText));
         },
         data -> {
           storage = data.storage();
@@ -342,6 +375,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
           restoring = null;
           attached = true;
           redraw();
+          prefetchNotes();
           consumeBarcode();
         },
         true);
@@ -352,13 +386,12 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   private void reload(boolean rescan) {
     if (repo == null || state.busy) return;
     LocalDate selected = state.selected;
-    List<VaultRepository.Note> oldNotes = state.notes;
     if (state.screen == AppState.Screen.DAY
         && state.day != null
         && state.selected.equals(state.day.note.date)) state.scrollY = ui.scroll.getScrollY();
     task(
         () -> {
-          var notes = rescan ? repo.notes() : oldNotes;
+          var notes = repo.notes(selected, rescan);
           if (notes.isEmpty()) return new Loaded(notes, null);
           LocalDate date =
               notes.stream().anyMatch(n -> n.date.equals(selected))
@@ -391,6 +424,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     controller.day(data.day());
     if (changed) redraw();
     else watchDay();
+    prefetchNotes();
   }
 
   @Override
@@ -409,15 +443,16 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   @Override
   public void chooseDate() {
     if (state.busy) return;
-    String[] labels = state.notes.stream().map(n -> n.date.toString()).toArray(String[]::new);
+    var notes = state.notes;
+    String[] labels = notes.stream().map(n -> n.date.toString()).toArray(String[]::new);
     int selected = 0;
-    for (int i = 0; i < state.notes.size(); i++)
-      if (state.notes.get(i).date.equals(state.selected)) selected = i;
+    for (int i = 0; i < notes.size(); i++)
+      if (notes.get(i).date.equals(state.selected)) selected = i;
     dialogs.dates(
         labels,
         selected,
         index -> {
-          state.selected = state.notes.get(index).date;
+          state.selected = notes.get(index).date;
           state.scrollY = 0;
           reload(false);
         });

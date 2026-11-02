@@ -126,14 +126,11 @@ public final class SafVaultStorage implements VaultStorage {
   }
 
   @Override
-  public List<String> files(String directory) throws IOException {
-    List<String> paths = new ArrayList<>();
-    collect(resolve(directory), directory, paths, 0);
-    return paths;
+  public List<Entry> children(String directory) throws IOException {
+    return listChildren(resolve(directory), directory);
   }
 
-  private void collect(Uri parent, String path, List<String> files, int depth) throws IOException {
-    if (depth > 15) return;
+  private List<Entry> listChildren(Uri parent, String path) throws IOException {
     Uri children =
         DocumentsContract.buildChildDocumentsUriUsingTree(
             rootUri, DocumentsContract.getDocumentId(parent));
@@ -142,20 +139,18 @@ public final class SafVaultStorage implements VaultStorage {
       DocumentsContract.Document.COLUMN_DISPLAY_NAME,
       DocumentsContract.Document.COLUMN_MIME_TYPE
     };
-    Map<Uri, String> directories = new LinkedHashMap<>();
+    List<Entry> entries = new ArrayList<>();
     try (Cursor cursor = context.getContentResolver().query(children, columns, null, null, null)) {
       if (cursor == null) throw new IOException("Не удалось прочитать список заметок");
       while (cursor.moveToNext()) {
         Uri uri = DocumentsContract.buildDocumentUriUsingTree(rootUri, cursor.getString(0));
         String child = path + "/" + cursor.getString(1);
         documents.put(child, uri);
-        if (DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2)))
-          directories.put(uri, child);
-        else files.add(child);
+        entries.add(
+            new Entry(child, DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2))));
       }
     }
-    for (var child : directories.entrySet())
-      collect(child.getKey(), child.getValue(), files, depth + 1);
+    return entries;
   }
 
   public void exportBackups(File source, Uri tree) throws IOException {

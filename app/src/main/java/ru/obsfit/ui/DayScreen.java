@@ -106,8 +106,7 @@ public final class DayScreen {
     ui.body.addView(calories);
     ui.gap(ui.body, 20);
     for (String section : VaultMarkdown.SECTIONS) section(section);
-    ui.body.addView(
-        ui.text("Листайте только существующие дни · ↻ перечитывает хранилище", 12, MUTED));
+    ui.body.addView(ui.text("Листайте существующие дни · ↻ обновляет открытый день", 12, MUTED));
     ui.scrollTo(state.scrollY);
   }
 

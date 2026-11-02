@@ -43,7 +43,7 @@ public final class UiDialogs {
 
   public void dates(String[] labels, int current, IntConsumer selected) {
     new MaterialAlertDialogBuilder(ui.activity)
-        .setTitle("Ежедневные заметки")
+        .setTitle("Ближайшие заметки")
         .setSingleChoiceItems(
             labels,
             current,

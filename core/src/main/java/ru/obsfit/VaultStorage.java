@@ -24,5 +24,8 @@ public interface VaultStorage {
 
   void write(String path, String text) throws IOException;
 
-  List<String> files(String directory) throws IOException;
+  record Entry(String path, boolean directory) {}
+
+  /** Direct children only: one provider query, without descending into subdirectories. */
+  List<Entry> children(String directory) throws IOException;
 }

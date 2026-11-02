@@ -11,6 +11,7 @@ import java.util.*;
 public final class VaultRepository {
   private final VaultStorage storage;
   private final BackupStore backups;
+  private final NoteIndex noteIndex;
   // Accessed only by the single I/O executor. Cache is committed after successful reading/parsing.
   private Snapshot cachedDay;
   private boolean retryRead;
@@ -110,29 +111,24 @@ public final class VaultRepository {
   public VaultRepository(VaultStorage storage, BackupStore backups) {
     this.storage = storage;
     this.backups = backups;
+    noteIndex = new NoteIndex(storage);
   }
 
   public void validateRoot() throws IOException {
     storage.validateRoot();
     storage.requireDirectory("Дневник/Хроника");
-    VaultMarkdown.catalog(storage.read("Еда.md"));
-    storage.read("Замены.md");
   }
 
   public List<Note> notes() throws IOException {
-    List<Note> notes = new ArrayList<>();
-    for (String path : storage.files("Дневник/Хроника")) {
-      LocalDate date = VaultMarkdown.date(path.substring(path.lastIndexOf('/') + 1));
-      if (date != null) notes.add(new Note(date, path));
-    }
-    notes.sort(Comparator.comparing(n -> n.date));
-    for (int i = 1; i < notes.size(); i++)
-      if (notes.get(i - 1).date.equals(notes.get(i).date))
-        throw new IOException(
-            "Найдены две ежедневные заметки на "
-                + notes.get(i).date
-                + ". Устраните дубликат или конфликт Syncthing.");
-    return notes;
+    return notes(LocalDate.now(), false);
+  }
+
+  public List<Note> notes(LocalDate around, boolean refresh) throws IOException {
+    return noteIndex.window(around, refresh);
+  }
+
+  public List<Note> moreNotes(LocalDate around) throws IOException {
+    return noteIndex.extend(around);
   }
 
   public Snapshot load(Note note) throws IOException {

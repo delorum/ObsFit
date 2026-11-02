@@ -186,9 +186,9 @@ public class RefreshTest {
       update(path, text);
     }
 
-    public List<String> files(String path) {
+    public List<Entry> children(String path) {
       lists++;
-      return memory.files(path);
+      return memory.children(path);
     }
 
     public void validateRoot() {}

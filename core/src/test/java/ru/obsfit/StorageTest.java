@@ -116,7 +116,7 @@ public final class StorageTest {
         List.of(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 3)),
         repo.notes().stream().map(n -> n.date).toList());
     files.data.put("Дневник/Хроника/duplicate/2026-11-01-вс.md", Fixtures.DAY);
-    assertThrows(IOException.class, repo::notes);
+    assertThrows(IOException.class, () -> repo.notes(LocalDate.of(2026, 11, 1), true));
   }
 
   @Test
