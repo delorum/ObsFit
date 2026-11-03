@@ -13,7 +13,7 @@
 python3 tools/check-apk-alignment.py app/build/outputs/apk/debug/app-debug.apk
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`. Локальная готовая копия текущей версии: `dist/ObsFit-0.4.4-debug.apk`. APK, `dist/`, ключи подписи, SDK-настройки и каталоги сборки исключены из Git.
+APK: `app/build/outputs/apk/debug/app-debug.apk`. Локальная готовая копия текущей версии: `dist/ObsFit-0.4.5-debug.apk`. APK, `dist/`, ключи подписи, SDK-настройки и каталоги сборки исключены из Git.
 
 Передайте APK на телефон и установите. При запросе разрешите установку из используемого файлового менеджера. Локальные обновления подписываются тем же debug-ключом; удаление приложения для обновления не требуется. Debug-ключ не публикуется в репозитории.
 
