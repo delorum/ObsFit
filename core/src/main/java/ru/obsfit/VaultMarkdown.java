@@ -693,7 +693,8 @@ public final class VaultMarkdown {
   }
 
   public static LocalDate date(String name) {
-    if (!name.matches("\\d{4}-\\d{2}-\\d{2}-(?:пн|вт|ср|чт|пт|сб|вс)\\.md")) return null;
+    if (name.contains(".sync-conflict")) return null;
+    if (!name.matches("\\d{4}-\\d{2}-\\d{2}.*\\.md")) return null;
     try {
       return LocalDate.parse(name.substring(0, 10));
     } catch (Exception e) {

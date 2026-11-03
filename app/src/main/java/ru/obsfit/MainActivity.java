@@ -35,7 +35,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   private AppState.Saved restoring;
   private boolean attached, resumed, checkingDay, extendingNotes;
   private VaultObserver observer;
-  private boolean resumeCheckPending;
+  private boolean resumeCheckPending, refreshNotesPending;
   private final Runnable providerChanged = () -> checkDay(false);
 
   private void providerChanged() {
@@ -95,27 +95,46 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   private void prefetchNotes() {
+    prefetchNotes(false);
+  }
+
+  private void prefetchNotes(boolean refresh) {
+    refreshNotesPending |= refresh;
     if (isDestroyed()
         || !resumed
         || extendingNotes
         || repo == null
-        || state.screen != AppState.Screen.DAY
-        || state.day == null) return;
+        || state.screen != AppState.Screen.DAY) return;
     extendingNotes = true;
+    boolean force = refreshNotesPending;
+    refreshNotesPending = false;
     var source = repo;
     var selected = state.selected;
     io.execute(
         () -> {
           try {
-            var notes = source.moreNotes(selected);
+            var notes = force ? source.refreshNotes(selected) : source.moreNotes(selected);
             runOnUiThread(
                 () -> {
                   extendingNotes = false;
-                  if (!isDestroyed() && repo == source && !state.busy) state.notes = notes;
+                  if (!isDestroyed() && repo == source && !state.busy) {
+                    state.notes = notes;
+                    ui.updateNavigation();
+                    if (state.screen == AppState.Screen.DAY
+                        && notes.stream().noneMatch(note -> note.date.equals(state.selected))) {
+                      if (notes.isEmpty()) applyDay(new Loaded(notes, null), false);
+                      else reload(false);
+                    }
+                  }
+                  if (!isDestroyed() && refreshNotesPending) prefetchNotes(false);
                 });
           } catch (Exception error) {
             android.util.Log.d("ObsFitDays", "Day prefetch failed; retry on navigation", error);
-            runOnUiThread(() -> extendingNotes = false);
+            runOnUiThread(
+                () -> {
+                  extendingNotes = false;
+                  if (!isDestroyed() && refreshNotesPending) prefetchNotes(false);
+                });
           }
         });
   }
@@ -391,15 +410,24 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         && state.selected.equals(state.day.note.date)) state.scrollY = ui.scroll.getScrollY();
     task(
         () -> {
-          var notes = repo.notes(selected, rescan);
+          var notes = repo.notes(selected, false);
           if (notes.isEmpty()) return new Loaded(notes, null);
           LocalDate date =
               notes.stream().anyMatch(n -> n.date.equals(selected))
                   ? selected
                   : AppController.nearest(notes, selected);
-          return new Loaded(
-              notes,
-              repo.load(notes.stream().filter(n -> n.date.equals(date)).findFirst().orElseThrow()));
+          var note = notes.stream().filter(n -> n.date.equals(date)).findFirst().orElseThrow();
+          try {
+            return new Loaded(notes, repo.load(note));
+          } catch (java.io.FileNotFoundException missing) {
+            // Only a deleted selected note requires resolving a replacement before display.
+            notes = repo.refreshNotes(selected);
+            if (notes.isEmpty()) return new Loaded(notes, null);
+            LocalDate replacement = AppController.nearest(notes, selected);
+            var replacementNote =
+                notes.stream().filter(n -> n.date.equals(replacement)).findFirst().orElseThrow();
+            return new Loaded(notes, repo.load(replacementNote));
+          }
         },
         data -> applyDay(data, rescan),
         rescan);
@@ -424,7 +452,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     controller.day(data.day());
     if (changed) redraw();
     else watchDay();
-    prefetchNotes();
+    if (forceRedraw) prefetchNotes(true);
+    else if (data.day() != null) prefetchNotes();
   }
 
   @Override

@@ -13,7 +13,7 @@ public final class NoteIndex {
   public static final int PREFETCH_DISTANCE = 2;
   private final VaultStorage storage;
   private final NavigableMap<LocalDate, VaultRepository.Note> loaded = new TreeMap<>();
-  private boolean pastEnd, futureEnd;
+  private boolean pastEnd, futureEnd, initialNeighbors;
   private final Map<String, List<VaultStorage.Entry>> directories = new HashMap<>();
 
   public NoteIndex(VaultStorage storage) {
@@ -24,9 +24,23 @@ public final class NoteIndex {
     if (refresh) {
       directories.clear();
       loaded.clear();
-      pastEnd = futureEnd = false;
+      pastEnd = futureEnd = initialNeighbors = false;
     }
     if (loaded.isEmpty()) {
+      String folder = DiaryLayout.weekFolder(around);
+      List<VaultRepository.Note> direct = new ArrayList<>();
+      for (var entry : children(folder)) {
+        if (entry.directory()) continue;
+        LocalDate date =
+            VaultMarkdown.date(entry.path().substring(entry.path().lastIndexOf('/') + 1));
+        if (date != null && DiaryLayout.weekFolder(date).equals(folder))
+          direct.add(new VaultRepository.Note(date, entry.path()));
+      }
+      if (direct.stream().anyMatch(note -> !note.date.isAfter(around))) {
+        merge(direct);
+        initialNeighbors = true;
+        return List.copyOf(loaded.values());
+      }
       var before = seek(around, true, NEIGHBORS + 1);
       var after = seek(around, false, NEIGHBORS);
       merge(before);
@@ -40,6 +54,16 @@ public final class NoteIndex {
   /** Called in the background after showing a day; adds one page only near a loaded edge. */
   public List<VaultRepository.Note> extend(LocalDate around) throws IOException {
     if (loaded.isEmpty()) return window(around, false);
+    if (initialNeighbors) {
+      var before = seek(around, true, NEIGHBORS + 1);
+      var after = seek(around, false, NEIGHBORS);
+      merge(before);
+      merge(after);
+      pastEnd = before.size() < NEIGHBORS + 1;
+      futureEnd = after.size() < NEIGHBORS;
+      initialNeighbors = false;
+      return List.copyOf(loaded.values());
+    }
     if (!pastEnd && loaded.headMap(around, false).size() <= PREFETCH_DISTANCE) {
       var before = seek(loaded.firstKey().minusDays(1), true, NEIGHBORS);
       merge(before);
@@ -53,13 +77,48 @@ public final class NoteIndex {
     return List.copyOf(loaded.values());
   }
 
+  /** Refreshes a small neighborhood atomically; keeps previously visited dates outside it. */
+  public List<VaultRepository.Note> refreshNearby(LocalDate around) throws IOException {
+    NoteIndex fresh = new NoteIndex(storage);
+    fresh.window(around, false);
+    fresh.extend(around);
+    if (fresh.loaded.isEmpty()) loaded.clear();
+    else {
+      LocalDate first = fresh.loaded.firstKey(), last = fresh.loaded.lastKey();
+      loaded
+          .entrySet()
+          .removeIf(
+              entry ->
+                  (!entry.getKey().isBefore(first) && !entry.getKey().isAfter(last))
+                      || fresh.pastEnd && entry.getKey().isBefore(first)
+                      || fresh.futureEnd && entry.getKey().isAfter(last));
+      loaded.putAll(fresh.loaded);
+    }
+    directories.putAll(fresh.directories);
+    pastEnd = fresh.pastEnd;
+    futureEnd = fresh.futureEnd;
+    initialNeighbors = false;
+    return List.copyOf(loaded.values());
+  }
+
+  private List<VaultStorage.Entry> children(String path) throws IOException {
+    var cached = directories.get(path);
+    if (cached != null) return cached;
+    var entries = List.copyOf(storage.children(path));
+    directories.put(path, entries);
+    return entries;
+  }
+
   private void merge(List<VaultRepository.Note> notes) throws IOException {
+    NavigableMap<LocalDate, VaultRepository.Note> merged = new TreeMap<>(loaded);
     for (var note : notes) {
-      var old = loaded.get(note.date);
+      var old = merged.get(note.date);
       if (old != null && !old.path.equals(note.path))
         throw new IOException("Найдены две ежедневные заметки на " + note.date);
-      loaded.put(note.date, note);
+      merged.put(note.date, note);
     }
+    loaded.clear();
+    loaded.putAll(merged);
   }
 
   private record Range(LocalDate start, LocalDate end) {
@@ -103,11 +162,7 @@ public final class NoteIndex {
         continue;
       }
       if (node.depth > 15) continue;
-      var entries = directories.get(node.path);
-      if (entries == null) {
-        entries = List.copyOf(storage.children(node.path));
-        directories.put(node.path, entries);
-      }
+      var entries = children(node.path);
       for (var entry : entries) {
         String name = entry.path().substring(entry.path().lastIndexOf('/') + 1);
         if (entry.directory()) {
@@ -124,7 +179,7 @@ public final class NoteIndex {
     return result;
   }
 
-  private static final Pattern WEEK = Pattern.compile("(\\d{4})-(\\d{2})-неделя");
+  private static final Pattern WEEK = Pattern.compile("(\\d{4})-(\\d{1,2})-неделя");
   private static final Pattern MONTH = Pattern.compile("(0[1-9]|1[0-2])-.+");
 
   private Range directoryRange(String name, Range parent) {

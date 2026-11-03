@@ -131,6 +131,10 @@ public final class VaultRepository {
     return noteIndex.extend(around);
   }
 
+  public List<Note> refreshNotes(LocalDate around) throws IOException {
+    return noteIndex.refreshNearby(around);
+  }
+
   public Snapshot load(Note note) throws IOException {
     retryRead = true;
     var before = stamps(note);

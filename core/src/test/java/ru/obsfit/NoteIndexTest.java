@@ -4,7 +4,6 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.time.*;
-import java.time.temporal.IsoFields;
 import java.util.*;
 import org.junit.Test;
 
@@ -14,17 +13,7 @@ public class NoteIndexTest {
   private static String path(LocalDate day) {
     String weekday =
         new String[] {"пн", "вт", "ср", "чт", "пт", "сб", "вс"}[day.getDayOfWeek().getValue() - 1];
-    return String.format(
-        Locale.ROOT,
-        "%s/%04d/%d/%02d-месяц/%04d-%02d-неделя/%s-%s.md",
-        NoteIndex.ROOT,
-        day.getYear(),
-        (day.getMonthValue() - 1) / 3 + 1,
-        day.getMonthValue(),
-        day.get(IsoFields.WEEK_BASED_YEAR),
-        day.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR),
-        day,
-        weekday);
+    return DiaryLayout.weekFolder(day) + "/" + day + "-" + weekday + ".md";
   }
 
   private static final class Storage implements VaultStorage {
@@ -59,6 +48,12 @@ public class NoteIndexTest {
     public void requireDirectory(String path) {}
   }
 
+  private static List<VaultRepository.Note> fullWindow(
+      NoteIndex index, LocalDate date, boolean refresh) throws IOException {
+    index.window(date, refresh);
+    return index.extend(date);
+  }
+
   private static List<LocalDate> dates(List<VaultRepository.Note> notes) {
     return notes.stream().map(n -> n.date).toList();
   }
@@ -69,7 +64,11 @@ public class NoteIndexTest {
     for (int i = 0; i < 7000; i++) storage.add(TODAY.minusDays(i));
     storage.memory.data.put(
         NoteIndex.ROOT + "/2026/4/11-месяц/2026-45-неделя/attachments/a/b/c/image.webp", "image");
-    var notes = new NoteIndex(storage).window(TODAY, false);
+    var index = new NoteIndex(storage);
+    var first = index.window(TODAY, false);
+    assertEquals(List.of(TODAY), dates(first));
+    assertEquals(List.of(DiaryLayout.weekFolder(TODAY)), storage.queries);
+    var notes = index.extend(TODAY);
     assertEquals(8, notes.size());
     assertEquals(TODAY.minusDays(7), notes.get(0).date);
     assertEquals(TODAY, notes.get(7).date);
@@ -84,7 +83,7 @@ public class NoteIndexTest {
     var storage = new Storage();
     for (int i = 0; i < 100; i++) storage.add(TODAY.minusDays(i));
     var index = new NoteIndex(storage);
-    index.window(TODAY, false);
+    fullWindow(index, TODAY, false);
     int initial = storage.queries.size();
     index.window(TODAY, false);
     assertEquals(initial, storage.queries.size());
@@ -103,7 +102,7 @@ public class NoteIndexTest {
     var storage = new Storage();
     for (int i = -50; i <= 50; i++) storage.add(TODAY.plusDays(i));
     var index = new NoteIndex(storage);
-    assertEquals(15, index.window(TODAY, false).size());
+    assertEquals(15, fullWindow(index, TODAY, false).size());
     int queries = storage.queries.size();
     assertEquals(15, index.extend(TODAY.plusDays(4)).size());
     assertEquals(queries, storage.queries.size());
@@ -122,7 +121,7 @@ public class NoteIndexTest {
         List.of(LocalDate.of(2020, 1, 1), LocalDate.of(2025, 12, 31), TODAY, TODAY.plusDays(2));
     existing.forEach(storage::add);
     var index = new NoteIndex(storage);
-    var notes = index.window(TODAY, false);
+    var notes = fullWindow(index, TODAY, false);
     assertEquals(existing, dates(notes));
     var controller = new AppController();
     controller.state.notes = notes;
@@ -144,7 +143,7 @@ public class NoteIndexTest {
     storage.add(TODAY.plusDays(1));
     storage.memory.data.remove(path(TODAY));
     storage.queries.clear();
-    var notes = index.window(TODAY, true);
+    var notes = fullWindow(index, TODAY, true);
     assertFalse(dates(notes).contains(TODAY));
     assertTrue(dates(notes).contains(TODAY.plusDays(1)));
     assertTrue(storage.queries.size() < 16);
@@ -157,10 +156,10 @@ public class NoteIndexTest {
     var index = new NoteIndex(storage);
     assertTrue(index.window(TODAY, false).isEmpty());
     storage.add(TODAY.plusDays(20));
-    var future = index.window(TODAY, true);
+    var future = fullWindow(index, TODAY, true);
     assertEquals(TODAY.plusDays(20), AppController.nearest(future, TODAY));
     storage.add(TODAY.minusDays(10));
-    var notes = index.window(TODAY, true);
+    var notes = fullWindow(index, TODAY, true);
     assertEquals(TODAY.minusDays(10), AppController.nearest(notes, TODAY));
   }
 
@@ -169,7 +168,7 @@ public class NoteIndexTest {
     var storage = new Storage();
     for (int i = 0; i < 20; i++) storage.add(TODAY.minusDays(i));
     storage.memory.data.put(path(TODAY.minusDays(7)).replace("-пн.md", "-вт.md"), Fixtures.DAY);
-    assertThrows(IOException.class, () -> new NoteIndex(storage).window(TODAY, false));
+    assertThrows(IOException.class, () -> fullWindow(new NoteIndex(storage), TODAY, false));
   }
 
   @Test
@@ -197,7 +196,7 @@ public class NoteIndexTest {
           new ArrayList<>(all.headSet(around, true).descendingSet().stream().limit(8).toList());
       expected.addAll(all.tailSet(around, false).stream().limit(7).toList());
       expected.sort(Comparator.naturalOrder());
-      assertEquals("around " + around, expected, dates(index.window(around, true)));
+      assertEquals("around " + around, expected, dates(fullWindow(index, around, true)));
     }
   }
 

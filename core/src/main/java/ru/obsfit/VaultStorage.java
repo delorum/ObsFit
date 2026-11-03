@@ -26,6 +26,6 @@ public interface VaultStorage {
 
   record Entry(String path, boolean directory) {}
 
-  /** Direct children only: one provider query, without descending into subdirectories. */
+  /** Direct children only. Missing directories yield an empty list; provider errors propagate. */
   List<Entry> children(String directory) throws IOException;
 }

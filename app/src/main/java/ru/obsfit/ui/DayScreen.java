@@ -57,10 +57,7 @@ public final class DayScreen {
     LinearLayout dates = ui.row();
     MaterialButton prev = ui.icon("‹", "Предыдущая заметка", () -> actions.navigate(-1)),
         next = ui.icon("›", "Следующая заметка", () -> actions.navigate(1));
-    prev.setEnabled(controller.canNavigate(-1));
-    next.setEnabled(controller.canNavigate(1));
-    prev.setAlpha(prev.isEnabled() ? 1f : .28f);
-    next.setAlpha(next.isEnabled() ? 1f : .28f);
+    ui.navigationButtons(prev, next, controller::canNavigate);
     var prevParams = new LinearLayout.LayoutParams(ui.dp(48), ui.dp(52));
     dates.addView(prev, prevParams);
     LinearLayout label = ui.column();

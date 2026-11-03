@@ -38,16 +38,28 @@ public final class SafVaultStorage implements VaultStorage {
   private Uri resolve(String path) throws IOException {
     Uri cached = documents.get(path);
     if (cached != null) return cached;
-    DocumentFile file = DocumentFile.fromTreeUri(context, rootUri);
-    for (String part : path.split("/")) {
-      if (file == null) break;
-      file = file.findFile(part);
+    String rootId = DocumentsContract.getTreeDocumentId(rootUri);
+    String directId = DiaryLayout.externalDocumentId(rootUri.getAuthority(), rootId, path);
+    if (directId != null) {
+      Uri direct = DocumentsContract.buildDocumentUriUsingTree(rootUri, directId);
+      documents.put(path, direct);
+      return direct;
     }
-    if (file == null)
-      throw new IOException(
-          "В выбранной папке не найден «" + path + "». Выберите корень YaDiskVera.");
-    documents.put(path, file.getUri());
-    return file.getUri();
+    Uri current = DocumentsContract.buildDocumentUriUsingTree(rootUri, rootId);
+    String prefix = "";
+    for (String part : path.split("/")) {
+      String child = prefix.isEmpty() ? part : prefix + "/" + part;
+      Uri found = documents.get(child);
+      if (found == null) {
+        listChildren(current, prefix);
+        found = documents.get(child);
+      }
+      if (found == null)
+        throw new FileNotFoundException("В выбранной папке не найден «" + path + "»");
+      prefix = child;
+      current = found;
+    }
+    return current;
   }
 
   @Override
@@ -127,7 +139,61 @@ public final class SafVaultStorage implements VaultStorage {
 
   @Override
   public List<Entry> children(String directory) throws IOException {
-    return listChildren(resolve(directory), directory);
+    Uri uri;
+    try {
+      uri = resolve(directory);
+    } catch (FileNotFoundException missing) {
+      return List.of();
+    }
+    try {
+      return listChildren(uri, directory);
+    } catch (IOException | IllegalArgumentException error) {
+      // An absent calculated week is normal. A provider failure must remain an error.
+      if (!directoryExists(uri)) {
+        documents.remove(directory);
+        return List.of();
+      }
+      if (error instanceof IOException io) throw io;
+      throw new IOException("Не удалось прочитать список заметок", error);
+    }
+  }
+
+  private boolean directoryExists(Uri uri) throws IOException {
+    try (Cursor cursor =
+        context
+            .getContentResolver()
+            .query(
+                uri,
+                new String[] {DocumentsContract.Document.COLUMN_MIME_TYPE},
+                null,
+                null,
+                null)) {
+      if (cursor == null) {
+        // DocumentsProvider turns FileNotFoundException into a null cursor. Verify the
+        // granted root is still reachable before treating the calculated folder as absent.
+        if (!"com.android.externalstorage.documents".equals(rootUri.getAuthority()))
+          throw new IOException("Файловый провайдер недоступен");
+        Uri root =
+            DocumentsContract.buildDocumentUriUsingTree(
+                rootUri, DocumentsContract.getTreeDocumentId(rootUri));
+        try (Cursor check =
+            context
+                .getContentResolver()
+                .query(
+                    root,
+                    new String[] {DocumentsContract.Document.COLUMN_MIME_TYPE},
+                    null,
+                    null,
+                    null)) {
+          if (check == null || !check.moveToFirst()) throw new IOException("Хранилище недоступно");
+          return false;
+        }
+      }
+      if (!cursor.moveToFirst()) return false;
+      if (!DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(0)))
+        throw new IOException("Ожидалась папка дневника");
+      return true;
+    }
   }
 
   private List<Entry> listChildren(Uri parent, String path) throws IOException {
@@ -144,7 +210,7 @@ public final class SafVaultStorage implements VaultStorage {
       if (cursor == null) throw new IOException("Не удалось прочитать список заметок");
       while (cursor.moveToNext()) {
         Uri uri = DocumentsContract.buildDocumentUriUsingTree(rootUri, cursor.getString(0));
-        String child = path + "/" + cursor.getString(1);
+        String child = path.isEmpty() ? cursor.getString(1) : path + "/" + cursor.getString(1);
         documents.put(child, uri);
         entries.add(
             new Entry(child, DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2))));

@@ -36,7 +36,23 @@ public final class Ui {
   public ScrollView scroll;
   private ProgressBar progress;
   private TextView error;
-  private Runnable clockUpdate;
+  private Runnable clockUpdate, navigationUpdate;
+
+  public void navigationButtons(
+      MaterialButton previous, MaterialButton next, java.util.function.IntPredicate canNavigate) {
+    navigationUpdate =
+        () -> {
+          previous.setEnabled(canNavigate.test(-1));
+          next.setEnabled(canNavigate.test(1));
+          previous.setAlpha(previous.isEnabled() ? 1f : .28f);
+          next.setAlpha(next.isEnabled() ? 1f : .28f);
+        };
+    updateNavigation();
+  }
+
+  public void updateNavigation() {
+    if (navigationUpdate != null) navigationUpdate.run();
+  }
 
   public void updateClock() {
     if (clockUpdate != null) clockUpdate.run();
@@ -185,6 +201,7 @@ public final class Ui {
   public void page(
       String title, String subtitle, Runnable back, List<Action> actions, boolean busy) {
     clockUpdate = null;
+    navigationUpdate = null;
     LinearLayout root = column();
     root.setBackgroundColor(BG);
     ViewCompat.setOnApplyWindowInsetsListener(
