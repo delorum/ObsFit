@@ -14,7 +14,7 @@ public class MealPlanTest {
   }
 
   private MealPlan.Guidance at(String time, MealPlan.Eaten... food) {
-    return MealPlan.guidance(DAY, DAY.atTime(LocalTime.parse(time)), List.of(food));
+    return MealPlan.guidance(DAY, DAY.atTime(LocalTime.parse(time)), List.of(food), 2600);
   }
 
   @Test

@@ -5,7 +5,8 @@ import java.util.*;
 
 /** Daily budget for the user’s fixed schedule. No Android or I/O. */
 public final class MealPlan {
-  public static final int DAILY = 2600;
+  public static final int DAILY = VaultMarkdown.DEFAULT_DAILY_CALORIES;
+  private static final int BASE_DAILY = 2600;
 
   public record Slot(String name, String section, LocalTime start, LocalTime end, int calories) {}
 
@@ -37,6 +38,14 @@ public final class MealPlan {
   }
 
   public static Guidance guidance(LocalDate date, LocalDateTime clock, List<Eaten> entries) {
+    return guidance(date, clock, entries, DAILY);
+  }
+
+  public static Guidance guidance(
+      LocalDate date, LocalDateTime clock, List<Eaten> entries, double dailyLimit) {
+    if (!Double.isFinite(dailyLimit) || dailyLimit <= 0 || dailyLimit > 1_000_000_000)
+      dailyLimit = DAILY;
+    double scale = dailyLimit / BASE_DAILY;
     LocalTime time = clock.toLocalTime();
     double[] consumed = new double[SLOTS.size()];
     double total = 0, unassigned = 0;
@@ -52,7 +61,7 @@ public final class MealPlan {
         approximate |= entry.calories > 0;
       }
     }
-    double remaining = Math.max(0, DAILY - total);
+    double remaining = Math.max(0, dailyLimit - total);
     int first = 0;
     while (first < SLOTS.size() && !time.isBefore(SLOTS.get(first).end)) first++;
     int charge = Math.min(first, SLOTS.size() - 1);
@@ -65,7 +74,7 @@ public final class MealPlan {
           null,
           0,
           tomorrow,
-          tomorrow.calories,
+          (int) Math.round(tomorrow.calories * scale),
           date.plusDays(1).atTime(tomorrow.start),
           remaining,
           approximate,
@@ -73,7 +82,7 @@ public final class MealPlan {
     }
     double[] desired = new double[SLOTS.size() - first];
     for (int i = first; i < SLOTS.size(); i++)
-      desired[i - first] = SLOTS.get(i).calories - consumed[i];
+      desired[i - first] = SLOTS.get(i).calories * scale - consumed[i];
     int[] budgets = distribute(desired, (int) Math.floor(remaining + 1e-8));
     Slot active = null;
     int allowed = 0;
@@ -87,7 +96,8 @@ public final class MealPlan {
     Slot upcoming = next < SLOTS.size() ? SLOTS.get(next) : SLOTS.get(0);
     LocalDateTime nextAt =
         next < SLOTS.size() ? date.atTime(upcoming.start) : date.plusDays(1).atTime(upcoming.start);
-    int nextKcal = next < SLOTS.size() ? budgets[next - first] : upcoming.calories;
+    int nextKcal =
+        next < SLOTS.size() ? budgets[next - first] : (int) Math.round(upcoming.calories * scale);
     return new Guidance(active, allowed, upcoming, nextKcal, nextAt, remaining, approximate, false);
   }
 
@@ -145,7 +155,7 @@ public final class MealPlan {
   public static String hint(LocalDate date, LocalDateTime now, VaultMarkdown.Day day) {
     if (!date.equals(now.toLocalDate())) return "";
     var entries = day.entries.stream().map(e -> new Eaten(e.section, e.kcal)).toList();
-    var advice = guidance(date, now, entries);
+    var advice = guidance(date, now, entries, day.dailyLimit);
     String nextName = advice.next.name;
     String at = advice.next.start.format(HHMM);
     String tomorrow = advice.nextAt.toLocalDate().isAfter(date) ? "завтра, " : "";

@@ -122,12 +122,14 @@ public class SnackSectionsTest {
         MealPlan.guidance(
             date,
             date.atTime(11, 30),
-            List.of(new MealPlan.Eaten("Завтрак", 500), new MealPlan.Eaten("Перекусы", 100)));
+            List.of(new MealPlan.Eaten("Завтрак", 500), new MealPlan.Eaten("Перекусы", 100)),
+            2600);
     var modern =
         MealPlan.guidance(
             date,
             date.atTime(11, 30),
-            List.of(new MealPlan.Eaten("Завтрак", 500), new MealPlan.Eaten("Перекус 4", 100)));
+            List.of(new MealPlan.Eaten("Завтрак", 500), new MealPlan.Eaten("Перекус 4", 100)),
+            2600);
     assertEquals(modern, old);
     assertEquals(225, old.available());
   }
@@ -142,7 +144,8 @@ public class SnackSectionsTest {
             List.of(
                 new MealPlan.Eaten("Завтрак", 500), new MealPlan.Eaten("Перекус 1", 225),
                 new MealPlan.Eaten("Обед", 400), new MealPlan.Eaten("Перекус 2", 225),
-                new MealPlan.Eaten("Второй обед", 400), new MealPlan.Eaten("Перекус 3", 75)));
+                new MealPlan.Eaten("Второй обед", 400), new MealPlan.Eaten("Перекус 3", 75)),
+            2600);
     assertEquals("Перекус 3", a.now().name());
     assertEquals(150, a.available());
     assertEquals("Ужин", a.next().name());

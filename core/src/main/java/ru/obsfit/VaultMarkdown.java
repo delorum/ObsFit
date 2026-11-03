@@ -409,10 +409,11 @@ public final class VaultMarkdown {
   public static final class Day {
     public final String source;
     public final List<Entry> entries;
-    public final double total;
+    public final double total, dailyLimit;
 
     public Day(String source, List<Entry> entries) {
       this.source = source;
+      this.dailyLimit = dailyLimit(source);
       this.entries = List.copyOf(entries);
       this.total = entries.stream().mapToDouble(e -> e.kcal).sum();
     }
@@ -466,6 +467,38 @@ public final class VaultMarkdown {
       result[i] = true;
     }
     return result;
+  }
+
+  public static final int DEFAULT_DAILY_CALORIES = 2150;
+
+  /** Only a single positive inline field in the sports section is authoritative. */
+  public static double dailyLimit(String source) {
+    String[] lines = source.replace("\r\n", "\n").split("\n", -1);
+    boolean[] text = textLines(lines);
+    int sportsLevel = 0, fields = 0;
+    double limit = DEFAULT_DAILY_CALORIES;
+    for (int i = 0; i < lines.length; i++) {
+      if (!text[i]) continue;
+      Matcher heading = HEADING.matcher(lines[i].trim());
+      if (heading.matches()) {
+        int level = heading.group(1).length();
+        if (heading.group(2).equals("Спорт и диета")) sportsLevel = level;
+        else if (sportsLevel > 0 && level <= sportsLevel) sportsLevel = 0;
+        continue;
+      }
+      if (sportsLevel == 0) continue;
+      Matcher field =
+          Pattern.compile("^\\s*СуточнаяНормаКалорий::\\s*(.*?)\\s*$").matcher(lines[i]);
+      if (!field.matches()) continue;
+      fields++;
+      try {
+        double candidate = number(field.group(1));
+        limit = candidate > 0 ? candidate : DEFAULT_DAILY_CALORIES;
+      } catch (IllegalArgumentException error) {
+        limit = DEFAULT_DAILY_CALORIES;
+      }
+    }
+    return fields == 1 ? limit : DEFAULT_DAILY_CALORIES;
   }
 
   public static Day day(String source, Catalog catalog) {

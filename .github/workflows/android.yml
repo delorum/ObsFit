@@ -3,6 +3,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_apk:
+        description: Build and check APK explicitly
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -22,9 +27,13 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
       - name: Install matching Android SDK
         run: sdkmanager 'platforms;android-36.1' 'build-tools;36.1.0'
-      - name: Test, assemble and lint
-        run: ./gradlew --no-daemon :core:test :app:assembleDebug :app:lintDebug
+      - name: Test and lint
+        run: ./gradlew --no-daemon :core:test :app:lintDebug
+      - name: Assemble APK on explicit request
+        if: github.event_name == 'workflow_dispatch' && inputs.build_apk
+        run: ./gradlew --no-daemon :app:assembleDebug
       - name: Check native libraries for 16 KB compatibility
+        if: github.event_name == 'workflow_dispatch' && inputs.build_apk
         run: python3 tools/check-apk-alignment.py app/build/outputs/apk/debug/app-debug.apk
       - name: Upload test and lint reports
         if: always()

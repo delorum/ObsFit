@@ -61,7 +61,11 @@ public final class SettingsScreen {
     }
     ui.body.addView(ui.bold("Дневная норма", 18, INK));
     ui.body.addView(
-        ui.text("2600 ккал · до 2500 — зелёный, 2500–2600 — жёлтый, выше — красный.", 15, MUTED));
+        ui.text(
+            "Из СуточнаяНормаКалорий:: открытого дня, иначе 2150 ккал. Последние 100 ккал до нормы"
+                + " — жёлтый, выше нормы — красный.",
+            15,
+            MUTED));
     ui.gap(ui.body, 18);
     ui.body.addView(ui.bold("Синхронизация и копии", 18, INK));
     ui.body.addView(

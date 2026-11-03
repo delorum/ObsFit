@@ -87,16 +87,17 @@ public final class DayScreen {
     ui.body.addView(dates);
     ui.gap(ui.body, 20);
     double total = state.day.day.total;
-    int color = total > MealPlan.DAILY ? RED : total >= MealPlan.DAILY - 100 ? YELLOW : GREEN;
+    double limit = state.day.day.dailyLimit;
+    int color = total > limit ? RED : total >= limit - 100 ? YELLOW : GREEN;
     LinearLayout calories = ui.column();
     calories.setBackground(ui.background(CARD, 22));
     calories.setPadding(ui.dp(20), ui.dp(16), ui.dp(20), ui.dp(20));
     calories.addView(ui.text("СЪЕДЕНО ЗА ДЕНЬ", 11, MUTED));
     calories.addView(
-        ui.bold(VaultMarkdown.fmt(total) + " / " + MealPlan.DAILY + " ккал", 30, color));
+        ui.bold(VaultMarkdown.fmt(total) + " / " + VaultMarkdown.fmt(limit) + " ккал", 30, color));
     LinearProgressIndicator progress = new LinearProgressIndicator(ui.activity);
-    progress.setMax(MealPlan.DAILY);
-    progress.setProgress((int) Math.min(total, MealPlan.DAILY));
+    progress.setMax(Math.max(1, (int) Math.round(limit)));
+    progress.setProgress((int) Math.min(total, limit));
     progress.setIndicatorColor(color);
     progress.setTrackColor(0xff3b4350);
     progress.setTrackCornerRadius(ui.dp(4));
