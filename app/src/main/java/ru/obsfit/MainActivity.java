@@ -527,9 +527,18 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
 
   @Override
   public void savePortion() {
-    if (state.busy || state.portion == null) return;
-    PortionForm form = state.portion;
+    if (state.portion != null) savePortion(() -> state.portion);
+  }
+
+  @Override
+  public void quickAddFood(VaultMarkdown.Food food) {
+    savePortion(() -> controller.quickPortion(food));
+  }
+
+  private void savePortion(java.util.function.Supplier<PortionForm> prepare) {
+    if (state.busy) return;
     try {
+      PortionForm form = prepare.get();
       PortionForm.Save save = form.save();
       hideKeyboard();
       task(

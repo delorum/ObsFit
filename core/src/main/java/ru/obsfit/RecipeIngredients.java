@@ -5,13 +5,15 @@ import java.math.MathContext;
 import java.util.*;
 import java.util.regex.*;
 
-/** Ingredient selection preserves named foods, including nested recipes. */
+/** Shared recursive expansion of recipes for catalog ingredients and diary portions. */
 public final class RecipeIngredients {
   private RecipeIngredients() {}
 
   public record Item(String name, double grams) {}
 
   public record Nutrition(double weight, double kcal100) {}
+
+  public record Portion(String text, double calories) {}
 
   public static Nutrition nutrition(VaultMarkdown.Catalog catalog, List<Item> items) {
     double weight = 0, calories = 0;
@@ -55,16 +57,59 @@ public final class RecipeIngredients {
 
   public static String toMarkdown(List<Item> items) {
     List<String> rows = new ArrayList<>();
-    for (Item item : items)
-      rows.add(
-          item.name()
-              + " "
-              + BigDecimal.valueOf(item.grams())
-                  .round(new MathContext(15))
-                  .stripTrailingZeros()
-                  .toPlainString()
-              + " г");
+    for (Item item : items) rows.add(item.name() + " " + weightText(item.grams()) + " г");
     return String.join("<br>", rows);
+  }
+
+  public static String weightText(double grams) {
+    return BigDecimal.valueOf(grams)
+        .round(new MathContext(15))
+        .stripTrailingZeros()
+        .toPlainString();
+  }
+
+  public static List<Item> flatten(VaultMarkdown.Catalog catalog, List<Item> items) {
+    LinkedHashMap<String, Item> result = new LinkedHashMap<>();
+    Set<String> visiting = new HashSet<>();
+    for (Item item : items) expand(catalog, item, visiting, result);
+    return new ArrayList<>(result.values());
+  }
+
+  private static void expand(
+      VaultMarkdown.Catalog catalog, Item item, Set<String> visiting, Map<String, Item> result) {
+    VaultMarkdown.Food food = catalog.get(item.name());
+    if (food == null) throw new IllegalArgumentException("Неизвестный ингредиент: " + item.name());
+    double amount = grams(item.grams());
+    if (food.ingredients.isEmpty()) {
+      merge(result, new Item(food.name, amount));
+      return;
+    }
+    String key = VaultMarkdown.key(food.name);
+    if (!visiting.add(key)) throw new IllegalArgumentException("Циклический состав: " + food.name);
+    double factor = amount / grams(food.weight);
+    for (Item child : parse(catalog, food.ingredients))
+      expand(catalog, new Item(child.name(), grams(child.grams() * factor)), visiting, result);
+    visiting.remove(key);
+  }
+
+  /** Rounded leaf portions, used by both the preview and the text written to the note. */
+  public static Portion portion(VaultMarkdown.Catalog catalog, List<Item> items, double weight) {
+    grams(weight);
+    List<Item> leaves = flatten(catalog, items);
+    double scale = weight / nutrition(catalog, leaves).weight();
+    List<String> lines = new ArrayList<>();
+    double total = 0;
+    for (Item leaf : leaves) {
+      double amount = grams(leaf.grams() * scale);
+      double rounded = Math.round(amount * 100) / 100d;
+      if (rounded > 0) amount = rounded;
+      // Normalize the stored decimal before computing calories, including tiny positive weights.
+      amount = VaultMarkdown.number(weightText(amount));
+      VaultMarkdown.Food food = catalog.get(leaf.name());
+      lines.add(VaultMarkdown.portion(food.name, amount, food.kcal100));
+      total += Math.round(amount * food.kcal100 / 100);
+    }
+    return new Portion(String.join("\n", lines), total);
   }
 
   public static boolean available(
@@ -94,10 +139,9 @@ public final class RecipeIngredients {
     weight = grams(weight);
     if (!available(catalog, selected, excludedName))
       throw new IllegalArgumentException("Продукт не может входить в собственный состав");
-    LinkedHashMap<String, Item> merged = new LinkedHashMap<>();
-    for (Item item : current) merge(merged, item);
-    merge(merged, new Item(selected.name, weight));
-    return new ArrayList<>(merged.values());
+    List<Item> items = new ArrayList<>(current);
+    items.add(new Item(selected.name, weight));
+    return flatten(catalog, items);
   }
 
   private static void merge(Map<String, Item> values, Item item) {

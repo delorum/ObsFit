@@ -98,7 +98,8 @@ final class IngredientPicker {
     double initial = selected == null ? form.ingredients.get(index).grams() : selected.weight;
     EditText weight = ui.field(body, "Вес, г", VaultMarkdown.fmt(initial), true, true);
     if (selected != null && !selected.ingredients.isEmpty())
-      body.addView(ui.text("Блюдо добавится одним ингредиентом с указанным весом.", 13, MUTED));
+      body.addView(
+          ui.text("Блюдо разложится на простые ингредиенты пропорционально весу.", 13, MUTED));
     var dialog =
         new MaterialAlertDialogBuilder(ui.activity)
             .setTitle(name)

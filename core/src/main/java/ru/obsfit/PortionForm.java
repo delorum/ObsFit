@@ -57,7 +57,7 @@ public final class PortionForm {
       selectedFood = entry.food;
       manual = entry.weight == null;
       name = entry.name;
-      weight = entry.weight == null ? "100" : VaultMarkdown.fmt(entry.weight);
+      weight = entry.weight == null ? "100" : RecipeIngredients.weightText(entry.weight);
       manualKcal = VaultMarkdown.fmt(entry.kcal);
       if (selectedFood != null) {
         name = selectedFood.name;
@@ -81,8 +81,8 @@ public final class PortionForm {
     kcal100 = VaultMarkdown.fmt(food.kcal100);
     weight =
         entry != null && entry.weight != null
-            ? VaultMarkdown.fmt(entry.weight)
-            : VaultMarkdown.fmt(food.weight);
+            ? RecipeIngredients.weightText(entry.weight)
+            : RecipeIngredients.weightText(food.weight);
   }
 
   public void startNew() {
@@ -95,7 +95,8 @@ public final class PortionForm {
     choosing = false;
     name = "";
     aliases = "";
-    weight = entry != null && entry.weight != null ? VaultMarkdown.fmt(entry.weight) : "100";
+    weight =
+        entry != null && entry.weight != null ? RecipeIngredients.weightText(entry.weight) : "100";
     defaultWeight = "100";
     kcal100 = "";
     dirty = false;
@@ -126,17 +127,22 @@ public final class PortionForm {
   public void recalculateRecipe() {
     if (!recipe()) return;
     var calculated = RecipeIngredients.nutrition(original.catalog, composition.ingredients);
-    defaultWeight = VaultMarkdown.fmt(calculated.weight());
+    defaultWeight = RecipeIngredients.weightText(calculated.weight());
     kcal100 = VaultMarkdown.fmt(calculated.kcal100());
     if (!portionWeightEdited) weight = defaultWeight;
   }
 
   public double total() {
     if (recipe())
-      return Math.round(
-          VaultMarkdown.number(weight)
-              * RecipeIngredients.nutrition(original.catalog, composition.ingredients).kcal100()
-              / 100);
+      return RecipeIngredients.portion(
+              original.catalog, composition.ingredients, VaultMarkdown.number(weight))
+          .calories();
+    if (!manual && selectedFood != null && !selectedFood.ingredients.isEmpty())
+      return RecipeIngredients.portion(
+              original.catalog,
+              List.of(new RecipeIngredients.Item(selectedFood.name, selectedFood.weight)),
+              VaultMarkdown.number(weight))
+          .calories();
     return manual
         ? VaultMarkdown.number(manualKcal)
         : Math.round(VaultMarkdown.number(weight) * VaultMarkdown.number(kcal100) / 100);
@@ -178,21 +184,33 @@ public final class PortionForm {
             new VaultMarkdown.Food(
                 title,
                 aliasLines(aliases),
-                RecipeIngredients.toMarkdown(composition.ingredients),
+                RecipeIngredients.toMarkdown(
+                    RecipeIngredients.flatten(original.catalog, composition.ingredients)),
                 VaultMarkdown.number(kcal100),
                 VaultMarkdown.number(defaultWeight));
         catalog =
             VaultMarkdown.catalog(VaultMarkdown.addFood(catalog, added, original.replacementsText));
       }
-      line =
-          VaultMarkdown.portion(
-              title,
-              VaultMarkdown.number(weight),
-              newFood ? catalog.get(title).kcal100 : VaultMarkdown.number(kcal100));
+      VaultMarkdown.Food food = catalog.get(title);
+      if (food != null && !food.ingredients.isEmpty()) {
+        line =
+            RecipeIngredients.portion(
+                    catalog,
+                    List.of(new RecipeIngredients.Item(food.name, food.weight)),
+                    VaultMarkdown.number(weight))
+                .text();
+      } else {
+        line =
+            VaultMarkdown.portion(
+                title,
+                VaultMarkdown.number(weight),
+                newFood ? catalog.get(title).kcal100 : VaultMarkdown.number(kcal100));
+      }
     }
     String updated =
         entry == null
-            ? VaultMarkdown.add(original.day.source, section, line, catalog)
+            ? VaultMarkdown.addAll(
+                original.day.source, section, Arrays.asList(line.split("\n", -1)), catalog)
             : VaultMarkdown.edit(original.day.source, entry, line, catalog);
     return new Save(updated, added, title);
   }

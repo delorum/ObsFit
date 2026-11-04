@@ -21,6 +21,8 @@ public final class PortionScreen {
 
     void chooseFood(VaultMarkdown.Food food);
 
+    void quickAddFood(VaultMarkdown.Food food);
+
     void newFood();
 
     void manualCalories();
@@ -107,18 +109,28 @@ public final class PortionScreen {
           int shown = 0;
           for (var food : foods) {
             if (shown++ >= 100) break;
-            LinearLayout card = ui.column();
+            Ui.ClickRow card = ui.clickRow();
+            LinearLayout labels = ui.column();
             card.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
             card.setBackground(ui.background(CARD, 16));
-            card.addView(ui.bold(food.name, 17, INK));
-            card.addView(
+            labels.addView(ui.bold(food.name, 17, INK));
+            labels.addView(
                 ui.text(
-                    VaultMarkdown.fmt(food.weight)
+                    RecipeIngredients.weightText(food.weight)
                         + " г · "
                         + VaultMarkdown.fmt(food.kcal100)
                         + " ккал/100 г",
                     13,
                     MUTED));
+            ui.weighted(card, labels);
+            if (form.entry == null) {
+              Swipes.bind(
+                  ui, card, () -> actions.quickAddFood(food), () -> actions.quickAddFood(food));
+              card.setContentDescription(
+                  food.name
+                      + ". Нажмите, чтобы изменить вес, или смахните, чтобы добавить стандартную"
+                      + " порцию.");
+            }
             card.setOnClickListener(
                 v -> {
                   actions.chooseFood(food);
@@ -128,12 +140,13 @@ public final class PortionScreen {
           }
           if (foods.isEmpty())
             list.addView(ui.text("Еда не найдена. Можно добавить новую запись.", 16, MUTED));
-          caption.setText(
+          String text =
               foods.size() > 100
                   ? "Показаны первые 100 из " + foods.size() + ". Уточните поиск."
                   : form.query.isBlank()
                       ? "Недавно добавленные — в начале списка"
-                      : "Сначала точные совпадения, затем похожие");
+                      : "Сначала точные совпадения, затем похожие";
+          caption.setText(text + (form.entry == null ? " · Свайп — добавить" : ""));
         };
     ui.watch(
         search,

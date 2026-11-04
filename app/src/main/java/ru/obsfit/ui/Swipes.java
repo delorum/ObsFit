@@ -4,8 +4,7 @@ import android.view.*;
 import ru.obsfit.SwipeTracker;
 
 /**
- * One Android adapter for gestures in both lists. Confirmation and move actions are supplied by the
- * caller.
+ * One Android adapter for gestures in all food lists. Gesture actions are supplied by the caller.
  */
 public final class Swipes {
   private Swipes() {}

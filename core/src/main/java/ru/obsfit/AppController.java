@@ -57,6 +57,21 @@ public final class AppController {
     state.portion.choose(food);
   }
 
+  /** Prepares a default portion without changing the visible form or its recoverable draft. */
+  public PortionForm quickPortion(VaultMarkdown.Food food) {
+    if (state.screen != AppState.Screen.PORTION
+        || state.portion == null
+        || !state.portion.choosing
+        || state.portion.entry != null)
+      throw new IllegalStateException("Быстрое добавление доступно в списке выбора новой порции");
+    var source = state.portion;
+    if (food == null || source.original.catalog.get(food.name) != food)
+      throw new IllegalStateException("Список еды изменился. Выберите продукт заново.");
+    var quick = new PortionForm(source.original, source.section, null);
+    quick.choose(food);
+    return quick;
+  }
+
   public void newFood() {
     state.pendingBarcode = null;
     state.portion.startNew();

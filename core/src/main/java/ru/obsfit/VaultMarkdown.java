@@ -401,7 +401,7 @@ public final class VaultMarkdown {
       return prefix
           + (weight == null
               ? (name.isBlank() ? "" : name + " ") + fmt(kcal) + " ккал"
-              : name + " " + fmt(weight) + " г " + fmt(kcal) + " ккал")
+              : name + " " + RecipeIngredients.weightText(weight) + " г " + fmt(kcal) + " ккал")
           + suffix;
     }
   }
@@ -569,7 +569,12 @@ public final class VaultMarkdown {
     validName(name);
     if (grams <= 0 || !Double.isFinite(grams) || kcal100 < 0 || !Double.isFinite(kcal100))
       throw new IllegalArgumentException("Проверьте вес и калорийность");
-    return name.trim() + " " + fmt(grams) + " г " + Math.round(grams * kcal100 / 100) + " ккал";
+    return name.trim()
+        + " "
+        + RecipeIngredients.weightText(grams)
+        + " г "
+        + Math.round(grams * kcal100 / 100)
+        + " ккал";
   }
 
   private static String[] lines(String source) {
@@ -609,7 +614,14 @@ public final class VaultMarkdown {
     if (entry.line >= lines.size() || !lines.get(entry.line).equals(entry.raw))
       throw new IllegalStateException("Запись изменилась. Обновите день и повторите действие.");
     if (replacement == null) lines.remove(entry.line);
-    else lines.set(entry.line, entry.prefix + replacement + entry.suffix);
+    else {
+      List<String> replacements =
+          Arrays.stream(lines(replacement))
+              .map(line -> entry.prefix + line + entry.suffix)
+              .toList();
+      lines.remove(entry.line);
+      lines.addAll(entry.line, replacements);
+    }
     return recalculate(join(lines, source), catalog);
   }
 
@@ -645,8 +657,16 @@ public final class VaultMarkdown {
   }
 
   public static String add(String source, String section, String entry, Catalog catalog) {
+    return addAll(source, section, List.of(entry), catalog);
+  }
+
+  /** Inserts a validated batch together and recalculates the daily total once. */
+  public static String addAll(
+      String source, String section, List<String> entries, Catalog catalog) {
     section = sectionName(section);
-    if (!SECTIONS.contains(section) || entry.contains("\n") || entry.contains("\r"))
+    if (!SECTIONS.contains(section)
+        || entries.isEmpty()
+        || entries.stream().anyMatch(entry -> entry.contains("\n") || entry.contains("\r")))
       throw new IllegalArgumentException("Некорректная запись");
     List<String> lines = new ArrayList<>(Arrays.asList(lines(source)));
     int level = section.equals("Заметки") ? 2 : 3;
@@ -686,7 +706,7 @@ public final class VaultMarkdown {
     int at = sectionEnd(lines, start, level);
     List<String> insert = new ArrayList<>();
     if (at > 0 && !lines.get(at - 1).isBlank()) insert.add("");
-    insert.add(entry);
+    insert.addAll(entries);
     insert.add("");
     lines.addAll(at, insert);
     return recalculate(join(lines, source), catalog);

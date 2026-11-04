@@ -24,12 +24,12 @@ public class NestedRecipeTest {
   }
 
   @Test
-  public void selectionAndRoundTripPreserveNestedDishAndMergeOnlySameFood() {
+  public void selectionFlattensNestedDishAndMergesRepeatedLeaves() {
     var catalog = VaultMarkdown.catalog(NESTED);
     var items = RecipeIngredients.add(catalog, List.of(), "тр", 20, null);
     items = RecipeIngredients.add(catalog, items, "тарелка", 10, null);
     items = RecipeIngredients.add(catalog, items, "хл", 10, null);
-    assertEquals("тарелка 30 г<br>хлеб 10 г", RecipeIngredients.toMarkdown(items));
+    assertEquals("хлеб 32.5 г<br>сыр 7.5 г", RecipeIngredients.toMarkdown(items));
     assertEquals(items, RecipeIngredients.parse(catalog, RecipeIngredients.toMarkdown(items)));
     assertEquals(218.75, RecipeIngredients.nutrition(catalog, items).kcal100(), .000001);
     String saved =
@@ -40,7 +40,7 @@ public class NestedRecipeTest {
                 "новый набор", List.of(), RecipeIngredients.toMarkdown(items), 0, 0),
             Fixtures.REPLACEMENTS);
     assertEquals(
-        "тарелка 30 г<br>хлеб 10 г", VaultMarkdown.catalog(saved).get("новый набор").ingredients);
+        "хлеб 32.5 г<br>сыр 7.5 г", VaultMarkdown.catalog(saved).get("новый набор").ingredients);
   }
 
   @Test
@@ -105,7 +105,7 @@ public class NestedRecipeTest {
   }
 
   @Test
-  public void catalogAndPortionDraftsKeepNamedRecipeIngredients() {
+  public void legacyCatalogDraftRemainsReadableAndNewPortionDraftIsFlattened() {
     var snapshot = Fixtures.day(Fixtures.DAY, NESTED);
     var portion = new PortionForm(snapshot, "Обед", null);
     portion.startNew();
@@ -113,9 +113,10 @@ public class NestedRecipeTest {
     portion.composition.add(snapshot.catalog.get("набор"), 50);
     portion.recalculateRecipe();
     var restored = PortionForm.restore(snapshot, portion.draft());
-    assertEquals("набор 50 г", restored.save().newFood().ingredients);
+    assertEquals("хлеб 30 г<br>сыр 20 г", restored.save().newFood().ingredients);
     assertEquals(120, restored.total(), 0);
-    assertTrue(restored.save().noteText().contains("новый набор 50 г 120 ккал"));
+    assertTrue(restored.save().noteText().contains("хлеб 30 г 60 ккал"));
+    assertTrue(restored.save().noteText().contains("сыр 20 г 60 ккал"));
     var source = new VaultRepository.CatalogSnapshot(NESTED, Fixtures.REPLACEMENTS);
     var form = new CatalogForm(source, source.catalog.get("тарелка"));
     var recovered = CatalogForm.restore(source, form.draft());

@@ -44,13 +44,14 @@ public final class RecipeIngredientsTest {
     equal("белый хлеб 20 г", RecipeIngredients.toMarkdown(base));
     var combined = RecipeIngredients.add(catalog, base, "ббр", 30, null);
     equal(2, combined.size());
-    near(20, combined.get(0).grams());
-    equal("бутерброд", combined.get(1).name());
-    near(30, combined.get(1).grams());
+    near(40, combined.get(0).grams());
+    equal("колбаса", combined.get(1).name());
+    near(10, combined.get(1).grams());
     equal("белый хлеб 20 г", RecipeIngredients.toMarkdown(base));
     var doublePortion = RecipeIngredients.add(catalog, List.of(), "бутерброд", 120, null);
-    equal(1, doublePortion.size());
-    near(120, doublePortion.get(0).grams());
+    equal(2, doublePortion.size());
+    near(80, doublePortion.get(0).grams());
+    near(40, doublePortion.get(1).grams());
     var input =
         new VaultMarkdown.Food(
             "новый бутер", List.of("нб"), RecipeIngredients.toMarkdown(combined), 0, 0);

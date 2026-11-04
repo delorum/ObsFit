@@ -42,8 +42,11 @@ public class PortionRecipeTest {
     assertEquals(60, food.weight, 0);
     assertEquals(233.333333, food.kcal100, 0.00001);
     var day = VaultMarkdown.day(storage.data.get(Fixtures.PATH), catalog);
-    assertEquals("мой бутер", day.section("Обед").get(0).name);
-    assertEquals(140, day.section("Обед").get(0).kcal, 0);
+    assertEquals(2, day.section("Обед").size());
+    assertEquals("хлеб", day.section("Обед").get(0).name);
+    assertEquals(80, day.section("Обед").get(0).kcal, 0);
+    assertEquals("сыр", day.section("Обед").get(1).name);
+    assertEquals(60, day.section("Обед").get(1).kcal, 0);
     assertEquals(220, day.total, 0);
     assertEquals(Fixtures.DAY, form.original.day.source);
   }
@@ -56,7 +59,8 @@ public class PortionRecipeTest {
     var save = form.save();
     assertEquals("60", form.defaultWeight);
     assertEquals(70, form.total(), 0);
-    assertTrue(save.noteText().contains("мой бутер 30 г 70 ккал"));
+    assertTrue(save.noteText().contains("хлеб 20 г 40 ккал"));
+    assertTrue(save.noteText().contains("сыр 10 г 30 ккал"));
     assertEquals(60, save.newFood().weight, 0);
   }
 
@@ -93,14 +97,14 @@ public class PortionRecipeTest {
   }
 
   @Test
-  public void choosingAnExistingDishPreservesItAsOneIngredient() {
+  public void choosingAnExistingDishExpandsItsIngredients() {
     var form = new PortionForm(Fixtures.day(), "Обед", null);
     form.startNew();
     form.name = "половина бутера";
     form.composition.add(form.original.catalog.get("ббр"), 30);
     form.composition.add(form.original.catalog.get("хл"), 10);
     form.recalculateRecipe();
-    assertEquals("бутерброд 30 г<br>хлеб 10 г", form.save().newFood().ingredients);
+    assertEquals("хлеб 30 г<br>сыр 10 г", form.save().newFood().ingredients);
     assertEquals("40", form.defaultWeight);
     assertEquals(90, form.total(), 0);
   }
@@ -124,7 +128,8 @@ public class PortionRecipeTest {
     assertTrue(restored.portionWeightEdited);
     assertEquals("30", restored.weight);
     assertEquals(70, restored.total(), 0);
-    assertTrue(restored.save().noteText().contains("мой бутер 30 г 70 ккал"));
+    assertTrue(restored.save().noteText().contains("хлеб 20 г 40 ккал"));
+    assertTrue(restored.save().noteText().contains("сыр 10 г 30 ккал"));
   }
 
   @Test
