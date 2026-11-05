@@ -6,9 +6,10 @@ import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.widget.LinearLayout;
 import ru.obsfit.BuildConfig;
+import ru.obsfit.SportsDiary;
 
 public final class SettingsScreen {
-  public interface Actions {
+  public interface Actions extends HealthSections.Actions {
     String vaultUri();
 
     boolean connected();
@@ -59,6 +60,21 @@ public final class SettingsScreen {
       ui.body.addView(ui.button("Открыть дневник", actions::openDay));
       ui.gap(ui.body, 20);
     }
+    ui.body.addView(ui.bold("Тренировки · значения подхода", 18, INK));
+    ui.body.addView(
+        ui.text(
+            "Нажмите, чтобы изменить. Применяется к новым подходам; записанные остаются прежними.",
+            14,
+            MUTED));
+    for (var exercise : SportsDiary.EXERCISES) {
+      var row = ui.clickRow();
+      row.setMinimumHeight(ui.dp(48));
+      ui.weighted(row, ui.text(exercise.name(), 16, INK));
+      row.addView(ui.text(actions.workoutPreset(exercise), 15, ACCENT));
+      row.setOnClickListener(v -> actions.editWorkoutPreset(exercise));
+      ui.body.addView(row);
+    }
+    ui.gap(ui.body, 18);
     ui.body.addView(ui.bold("Дневная норма", 18, INK));
     ui.body.addView(
         ui.text(

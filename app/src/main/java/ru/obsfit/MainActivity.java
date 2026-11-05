@@ -606,6 +606,85 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
                         original.day.source, entry, targets.get(index), original.catalog)));
   }
 
+  @Override
+  public String workoutPreset(SportsDiary.Exercise exercise) {
+    return prefs.getString("workout:" + exercise.key(), exercise.preset());
+  }
+
+  @Override
+  public void editWorkoutPreset(SportsDiary.Exercise exercise) {
+    if (state.busy) return;
+    dialogs.workout(
+        exercise.name() + " · новый подход",
+        exercise,
+        SportsDiary.preset(exercise, workoutPreset(exercise)),
+        value -> {
+          prefs.edit().putString("workout:" + exercise.key(), value.format(exercise)).apply();
+          redraw();
+        });
+  }
+
+  @Override
+  public void workoutSet(SportsDiary.Exercise exercise, int index, SportsDiary.Set set) {
+    if (state.busy || state.day == null) return;
+    var original = state.day;
+    state.scrollY = ui.scroll.getScrollY();
+    try {
+      if (index < 0) {
+        int next =
+            SportsDiary.parse(exercise, SportsDiary.read(original.day.source, exercise.key()))
+                .size();
+        var preset = SportsDiary.preset(exercise, workoutPreset(exercise));
+        mutate(original, () -> SportsDiary.changeSet(original.day.source, exercise, next, preset));
+      } else
+        dialogs.workout(
+            exercise.name() + " · подход " + (index + 1),
+            exercise,
+            set,
+            value ->
+                mutate(
+                    original,
+                    () -> SportsDiary.changeSet(original.day.source, exercise, index, value)));
+    } catch (IllegalArgumentException failure) {
+      error(failure.getMessage());
+    }
+  }
+
+  @Override
+  public void removeWorkoutSet(SportsDiary.Exercise exercise, int index) {
+    if (state.busy || state.day == null) return;
+    var original = state.day;
+    dialogs.delete(
+        "Удалить подход?",
+        exercise.name() + " · " + (index + 1),
+        () ->
+            mutate(
+                original, () -> SportsDiary.changeSet(original.day.source, exercise, index, null)));
+  }
+
+  @Override
+  public void editWeight() {
+    if (state.busy || state.day == null) return;
+    var original = state.day;
+    try {
+      dialogs.weight(
+          SportsDiary.read(original.day.source, "Вес"),
+          value -> mutate(original, () -> SportsDiary.weight(original.day.source, value)));
+    } catch (IllegalArgumentException failure) {
+      error(failure.getMessage());
+    }
+  }
+
+  @Override
+  public void removeWeight() {
+    if (state.busy || state.day == null) return;
+    var original = state.day;
+    dialogs.delete(
+        "Удалить измеренный вес?",
+        state.selected.toString(),
+        () -> mutate(original, () -> SportsDiary.weight(original.day.source, "")));
+  }
+
   private void mutate(VaultRepository.Snapshot original, Work<String> change) {
     state.scrollY = ui.scroll.getScrollY();
     task(

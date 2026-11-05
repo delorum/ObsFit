@@ -27,7 +27,7 @@ public final class AppState {
   public PortionForm portion;
   public CatalogForm catalogForm;
   public PortionForm.Draft returnPortion;
-  public final Set<String> expanded = new HashSet<>(VaultMarkdown.SECTIONS);
+  public final Set<String> expanded = new HashSet<>();
   public String catalogQuery = "", pendingBarcode, error;
   public ScanTarget scanTarget;
   public int scrollY;

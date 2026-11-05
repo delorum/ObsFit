@@ -12,7 +12,7 @@ import java.util.*;
 import ru.obsfit.*;
 
 public final class DayScreen {
-  public interface Actions {
+  public interface Actions extends HealthSections.Actions {
     void portion(String section, VaultMarkdown.Entry entry);
 
     void delete(VaultMarkdown.Entry entry);
@@ -103,7 +103,9 @@ public final class DayScreen {
         calories, () -> MealPlan.hint(state.day.note.date, LocalDateTime.now(), state.day.day));
     ui.body.addView(calories);
     ui.gap(ui.body, 20);
-    for (String section : VaultMarkdown.SECTIONS) section(section);
+    for (String section : VaultMarkdown.SECTIONS) if (!section.equals("Заметки")) section(section);
+    section("Заметки");
+    new HealthSections(ui, state, actions).render();
     ui.body.addView(ui.text("Листайте существующие дни · ↻ обновляет открытый день", 12, MUTED));
     ui.scrollTo(state.scrollY);
   }

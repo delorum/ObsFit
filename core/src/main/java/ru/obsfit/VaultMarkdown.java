@@ -429,7 +429,7 @@ public final class VaultMarkdown {
   /**
    * Marks only Markdown text: code, frontmatter, quotes, HTML and Obsidian comments are excluded.
    */
-  private static boolean[] textLines(String[] lines) {
+  static boolean[] textLines(String[] lines) {
     boolean[] result = new boolean[lines.length];
     String fence = null;
     boolean front = false, html = false, comment = false;
