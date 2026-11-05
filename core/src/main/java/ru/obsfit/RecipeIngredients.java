@@ -94,22 +94,32 @@ public final class RecipeIngredients {
 
   /** Rounded leaf portions, used by both the preview and the text written to the note. */
   public static Portion portion(VaultMarkdown.Catalog catalog, List<Item> items, double weight) {
+    List<String> lines = new ArrayList<>();
+    double total = 0;
+    for (Item leaf : portionItems(catalog, items, weight)) {
+      VaultMarkdown.Food food = catalog.get(leaf.name());
+      lines.add(VaultMarkdown.portion(food.name, leaf.grams(), food.kcal100));
+      total += Math.round(leaf.grams() * food.kcal100 / 100);
+    }
+    return new Portion(String.join("\n", lines), total);
+  }
+
+  /** Exact displayed and saved leaf weights, including rounding of tiny portions. */
+  public static List<Item> portionItems(
+      VaultMarkdown.Catalog catalog, List<Item> items, double weight) {
     grams(weight);
     List<Item> leaves = flatten(catalog, items);
     double scale = weight / nutrition(catalog, leaves).weight();
-    List<String> lines = new ArrayList<>();
-    double total = 0;
+    List<Item> result = new ArrayList<>();
     for (Item leaf : leaves) {
       double amount = grams(leaf.grams() * scale);
       double rounded = Math.round(amount * 100) / 100d;
       if (rounded > 0) amount = rounded;
       // Normalize the stored decimal before computing calories, including tiny positive weights.
       amount = VaultMarkdown.number(weightText(amount));
-      VaultMarkdown.Food food = catalog.get(leaf.name());
-      lines.add(VaultMarkdown.portion(food.name, amount, food.kcal100));
-      total += Math.round(amount * food.kcal100 / 100);
+      result.add(new Item(leaf.name(), amount));
     }
-    return new Portion(String.join("\n", lines), total);
+    return result;
   }
 
   public static boolean available(

@@ -121,11 +121,46 @@ public final class SportsDiary {
   }
 
   public static String read(String source, String key) {
-    Fields f = fields(source);
+    return read(fields(source), key);
+  }
+
+  private static String read(Fields f, String key) {
     Integer index = f.indices.get(key);
     return index == null
         ? ""
         : f.lines.get(index).substring(f.lines.get(index).indexOf("::") + 2).trim();
+  }
+
+  public record Summary(String workout, String weight) {}
+
+  public static Summary summary(String source) {
+    Fields fields;
+    try {
+      fields = fields(source);
+    } catch (IllegalArgumentException error) {
+      return new Summary("!", "!");
+    }
+    int completed = 0;
+    boolean invalid = false;
+    for (var exercise : EXERCISES) {
+      try {
+        if (parse(exercise, read(fields, exercise.key)).stream()
+            .anyMatch(set -> set.first > 0 || set.second != null && set.second > 0)) completed++;
+      } catch (IllegalArgumentException error) {
+        invalid = true;
+      }
+    }
+    String workout =
+        invalid ? "!" : completed == 0 ? "—" : completed + "/" + EXERCISES.size() + " упр.";
+    String weight = read(fields, "Вес");
+    if (weight.isBlank()) weight = "—";
+    else
+      try {
+        weight = VaultMarkdown.fmt(positive(weight.replaceFirst("(?iu)\\s*кг$", ""), true)) + " кг";
+      } catch (IllegalArgumentException error) {
+        weight = "!";
+      }
+    return new Summary(workout, weight);
   }
 
   public static String write(String source, String key, String value) {

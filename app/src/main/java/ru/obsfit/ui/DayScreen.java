@@ -133,6 +133,11 @@ public final class DayScreen {
             if (!labelText.contentEquals(sectionCalories.getText()))
               sectionCalories.setText(labelText);
             sectionCalories.setTextColor(budget.remaining() < 0 ? RED : ACCENT);
+            boolean highlighted =
+                name.equals(MealPlan.highlightedSection(state.selected, LocalDateTime.now()));
+            sectionCalories.setTypeface(
+                null,
+                highlighted ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
             sectionCalories.setContentDescription(labelText.replace("\n", ", "));
             heading.setContentDescription(
                 name

@@ -7,13 +7,14 @@ import android.widget.*;
 import java.util.function.ToLongFunction;
 import ru.obsfit.*;
 
-/** The same composition editor in the catalog and new-portion forms. */
+/** Shared composition editor; existing diary recipes expose only ingredient weight changes. */
 final class IngredientSection {
   private final Ui ui;
   private final AppState state;
   private final CatalogForm form;
   private final Runnable changed;
   private final IngredientPicker picker;
+  private final boolean allowStructureChanges;
   private LinearLayout ingredients, list;
   private com.google.android.material.button.MaterialButton toggle;
 
@@ -23,6 +24,17 @@ final class IngredientSection {
       CatalogForm form,
       Runnable changed,
       ToLongFunction<VaultMarkdown.Food> recent) {
+    this(ui, state, form, changed, recent, true);
+  }
+
+  IngredientSection(
+      Ui ui,
+      AppState state,
+      CatalogForm form,
+      Runnable changed,
+      ToLongFunction<VaultMarkdown.Food> recent,
+      boolean allowStructureChanges) {
+    this.allowStructureChanges = allowStructureChanges;
     this.ui = ui;
     this.state = state;
     this.form = form;
@@ -53,12 +65,16 @@ final class IngredientSection {
     ingredients.setBackground(ui.background(CARD, 18));
     list = ui.column();
     ingredients.addView(list);
-    ingredients.addView(ui.button("＋ Добавить из справочника", picker::choose));
-    ingredients.addView(
-        ui.text(
-            "Выберите продукты и их вес. Вес блюда и калорийность рассчитаются автоматически.",
-            13,
-            MUTED));
+    if (allowStructureChanges) {
+      ingredients.addView(ui.button("＋ Добавить из справочника", picker::choose));
+      ingredients.addView(
+          ui.text(
+              "Выберите продукты и их вес. Вес блюда и калорийность рассчитаются автоматически.",
+              13,
+              MUTED));
+    } else {
+      ingredients.addView(ui.text("Вес ингредиентов — только для этой порции.", 13, MUTED));
+    }
     parent.addView(ingredients);
     ui.gap(parent, 12);
     refresh();
@@ -89,17 +105,18 @@ final class IngredientSection {
       weightButton.setContentDescription("Изменить вес: " + item.name());
       var weightParams = new LinearLayout.LayoutParams(-2, -2);
       row.addView(weightButton, weightParams);
-      row.addView(
-          ui.icon(
-              "×",
-              "Убрать ингредиент " + item.name(),
-              () -> {
-                if (state.busy) return;
-                form.remove(index);
-                refresh();
-                changed.run();
-              }),
-          ui.actionLayout(44, 48));
+      if (allowStructureChanges)
+        row.addView(
+            ui.icon(
+                "×",
+                "Убрать ингредиент " + item.name(),
+                () -> {
+                  if (state.busy) return;
+                  form.remove(index);
+                  refresh();
+                  changed.run();
+                }),
+            ui.actionLayout(44, 48));
       list.addView(row);
     }
   }

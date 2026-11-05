@@ -4,7 +4,6 @@ import static ru.obsfit.ui.Ui.*;
 
 import android.view.View;
 import android.widget.*;
-import java.util.List;
 import ru.obsfit.*;
 
 public final class CatalogScreen {
@@ -68,26 +67,10 @@ public final class CatalogScreen {
     card.setPadding(ui.dp(12), ui.dp(6), ui.dp(12), ui.dp(6));
     Ui.ClickRow row = ui.clickRow();
     LinearLayout labels = ui.column();
-    labels.addView(ui.bold(food.name, 18, INK));
-    double portionCalories =
-        RecipeIngredients.portion(
-                state.catalog.catalog,
-                List.of(new RecipeIngredients.Item(food.name, food.weight)),
-                food.weight)
-            .calories();
-    labels.addView(
-        ui.text(
-            VaultMarkdown.fmt(food.kcal100)
-                + " ккал/100 г · "
-                + VaultMarkdown.fmt(food.weight)
-                + " г · "
-                + VaultMarkdown.fmt(portionCalories)
-                + " ккал в порции",
-            13,
-            MUTED));
+    labels.addView(ui.bold(FoodLabels.title(food), 18, INK));
+    labels.addView(ui.text(FoodLabels.details(state.catalog.catalog, food), 13, MUTED));
     if (!food.aliases.isEmpty())
       labels.addView(ui.text(String.join(", ", food.aliases), 12, MUTED));
-    if (!food.ingredients.isEmpty()) labels.addView(ui.text("Составное блюдо", 12, ACCENT));
     ui.weighted(row, labels);
     row.addView(
         ui.icon("⋮", "Действия с продуктом", () -> actions.catalogMenu(food)),

@@ -63,6 +63,7 @@ public final class PortionForm {
         name = selectedFood.name;
         aliases = String.join("\n", selectedFood.aliases);
         kcal100 = VaultMarkdown.fmt(selectedFood.kcal100);
+        loadSelectedComposition();
       } else if (entry.weight != null)
         kcal100 = VaultMarkdown.fmt(entry.weight > 0 ? entry.kcal * 100 / entry.weight : 0);
     }
@@ -83,6 +84,8 @@ public final class PortionForm {
         entry != null && entry.weight != null
             ? RecipeIngredients.weightText(entry.weight)
             : RecipeIngredients.weightText(food.weight);
+    loadSelectedComposition();
+    dirty = false;
   }
 
   public void startNew() {
@@ -121,7 +124,43 @@ public final class PortionForm {
   }
 
   public boolean recipe() {
-    return newFood && composition.recipe();
+    return (newFood || selectedRecipe()) && composition.recipe();
+  }
+
+  public boolean selectedRecipe() {
+    return !newFood && !manual && selectedFood != null && !selectedFood.ingredients.isEmpty();
+  }
+
+  private void loadSelectedComposition() {
+    if (!selectedRecipe()) return;
+    composition.ingredients =
+        RecipeIngredients.portionItems(
+            original.catalog,
+            List.of(new RecipeIngredients.Item(selectedFood.name, selectedFood.weight)),
+            VaultMarkdown.number(weight));
+    recalculateRecipe();
+  }
+
+  public void changePortionWeight(String value) {
+    weight = value;
+    portionWeightEdited = true;
+    dirty = true;
+    if (!selectedRecipe()) return;
+    try {
+      composition.ingredients =
+          RecipeIngredients.portionItems(
+              original.catalog, composition.ingredients, VaultMarkdown.number(value));
+      recalculateRecipe();
+    } catch (IllegalArgumentException invalidIntermediateInput) {
+      // Preserve invalid text while typing, without destroying the last usable composition.
+    }
+  }
+
+  public void compositionChanged() {
+    dirty = true;
+    if (selectedRecipe()) portionWeightEdited = false;
+    recalculateRecipe();
+    if (selectedRecipe()) weight = defaultWeight;
   }
 
   public void recalculateRecipe() {
@@ -129,19 +168,13 @@ public final class PortionForm {
     var calculated = RecipeIngredients.nutrition(original.catalog, composition.ingredients);
     defaultWeight = RecipeIngredients.weightText(calculated.weight());
     kcal100 = VaultMarkdown.fmt(calculated.kcal100());
-    if (!portionWeightEdited) weight = defaultWeight;
+    if (newFood && !portionWeightEdited) weight = defaultWeight;
   }
 
   public double total() {
     if (recipe())
       return RecipeIngredients.portion(
               original.catalog, composition.ingredients, VaultMarkdown.number(weight))
-          .calories();
-    if (!manual && selectedFood != null && !selectedFood.ingredients.isEmpty())
-      return RecipeIngredients.portion(
-              original.catalog,
-              List.of(new RecipeIngredients.Item(selectedFood.name, selectedFood.weight)),
-              VaultMarkdown.number(weight))
           .calories();
     return manual
         ? VaultMarkdown.number(manualKcal)
@@ -192,7 +225,12 @@ public final class PortionForm {
             VaultMarkdown.catalog(VaultMarkdown.addFood(catalog, added, original.replacementsText));
       }
       VaultMarkdown.Food food = catalog.get(title);
-      if (food != null && !food.ingredients.isEmpty()) {
+      if (selectedRecipe()) {
+        line =
+            RecipeIngredients.portion(
+                    catalog, composition.ingredients, VaultMarkdown.number(weight))
+                .text();
+      } else if (food != null && !food.ingredients.isEmpty()) {
         line =
             RecipeIngredients.portion(
                     catalog,
@@ -272,9 +310,21 @@ public final class PortionForm {
     form.manualKcal = draft.manualKcal();
     form.dirty = draft.dirty();
     try {
-      form.composition.ingredients =
-          RecipeIngredients.parse(
-              snapshot.catalog, draft.ingredients() == null ? "" : draft.ingredients());
+      if (!form.selectedRecipe() || draft.ingredients() != null && !draft.ingredients().isBlank())
+        form.composition.ingredients =
+            RecipeIngredients.parse(
+                snapshot.catalog, draft.ingredients() == null ? "" : draft.ingredients());
+      else {
+        try {
+          form.composition.ingredients =
+              RecipeIngredients.portionItems(
+                  snapshot.catalog,
+                  form.composition.ingredients,
+                  VaultMarkdown.number(form.weight));
+        } catch (IllegalArgumentException invalidWeightDraft) {
+          // Keep invalid input and the valid default ingredients until the weight is corrected.
+        }
+      }
     } catch (IllegalArgumentException error) {
       throw new IllegalStateException(
           "Состав блюда изменился в справочнике. Откройте форму заново.", error);

@@ -33,15 +33,17 @@ public final class HealthSections {
     this.actions = actions;
   }
 
-  private LinearLayout card(String name) {
+  private LinearLayout card(String name, String summary) {
     LinearLayout card = ui.column();
     card.setPadding(ui.dp(14), ui.dp(8), ui.dp(14), ui.dp(12));
     card.setBackground(ui.background(CARD, 20));
     var heading = ui.clickRow();
     heading.setMinimumHeight(ui.dp(48));
     ui.weighted(heading, ui.bold((state.expanded.contains(name) ? "⌄  " : "›  ") + name, 18, INK));
+    heading.addView(
+        ui.text(summary, 14, summary.equals("!") ? RED : summary.equals("—") ? MUTED : ACCENT));
     heading.setContentDescription(
-        name + (state.expanded.contains(name) ? ", свернуть" : ", раскрыть"));
+        name + ", " + summary + (state.expanded.contains(name) ? ", свернуть" : ", раскрыть"));
     heading.setOnClickListener(
         v -> {
           state.scrollY = ui.scroll.getScrollY();
@@ -55,7 +57,8 @@ public final class HealthSections {
   }
 
   public void render() {
-    LinearLayout sports = card("Тренировка");
+    var summary = SportsDiary.summary(state.day.day.source);
+    LinearLayout sports = card("Тренировка", summary.workout());
     if (state.expanded.contains("Тренировка"))
       for (var e : SportsDiary.EXERCISES) {
         var header = ui.row();
@@ -93,7 +96,7 @@ public final class HealthSections {
           sports.addView(ui.text(error.getMessage() + " · проверьте запись в Obsidian", 14, RED));
         }
       }
-    LinearLayout weight = card("Вес");
+    LinearLayout weight = card("Вес", summary.weight());
     if (state.expanded.contains("Вес")) {
       String value;
       try {

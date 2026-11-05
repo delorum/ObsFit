@@ -172,6 +172,17 @@ public final class MealPlan {
     return Collections.unmodifiableMap(result);
   }
 
+  /** Current meal, or the last started meal during a break; today only. */
+  public static String highlightedSection(LocalDate date, LocalDateTime clock) {
+    if (!date.equals(clock.toLocalDate())) return null;
+    String section = null;
+    for (var slot : SLOTS) {
+      if (clock.toLocalTime().isBefore(slot.start)) break;
+      section = slot.section;
+    }
+    return section;
+  }
+
   private static int mainMeal(String section) {
     section = VaultMarkdown.sectionName(section);
     for (int i = 0; i < SLOTS.size(); i++) if (SLOTS.get(i).section.equals(section)) return i;

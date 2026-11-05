@@ -914,6 +914,11 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         else finishCatalogEditor();
       }
       case PORTION -> {
+        if (controller.portionBackToChoices()) {
+          hideKeyboard();
+          redraw();
+          return;
+        }
         if (state.portion != null && state.portion.dirty)
           discard(
               () -> {

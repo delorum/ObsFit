@@ -89,6 +89,20 @@ public final class AppController {
     state.portion.choosing = true;
   }
 
+  public boolean portionBackToChoices() {
+    var form = state.portion;
+    if (state.screen != AppState.Screen.PORTION
+        || form == null
+        || form.entry != null
+        || form.choosing
+        || form.newFood
+        || form.manual
+        || form.selectedFood == null) return false;
+    chooseFromCatalog();
+    form.dirty = false;
+    return true;
+  }
+
   public void catalog(VaultRepository.CatalogSnapshot catalog) {
     state.catalog = catalog;
     state.screen = AppState.Screen.CATALOG;

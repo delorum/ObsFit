@@ -43,6 +43,7 @@ public final class PortionScreen {
   private final ToLongFunction<VaultMarkdown.Food> recent;
   private EditText defaultWeightField, kcalField, portionWeightField;
   private boolean refreshing;
+  private IngredientSection ingredientSection;
 
   private void updateRecipeFields() {
     form.recalculateRecipe();
@@ -71,7 +72,9 @@ public final class PortionScreen {
   }
 
   public void render() {
-    ui.body.addView(ui.button("‹  Назад к дню", actions::back));
+    boolean backToList = !form.choosing && form.entry == null && form.selectedFood != null;
+    ui.body.addView(
+        ui.button(backToList ? "‹  Список продуктов" : "‹  Назад к дню", actions::back));
     ui.gap(ui.body, 12);
     LinearLayout mode = ui.row();
     if (form.entry == null) {
@@ -113,21 +116,15 @@ public final class PortionScreen {
             LinearLayout labels = ui.column();
             card.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
             card.setBackground(ui.background(CARD, 16));
-            labels.addView(ui.bold(food.name, 17, INK));
-            labels.addView(
-                ui.text(
-                    RecipeIngredients.weightText(food.weight)
-                        + " г · "
-                        + VaultMarkdown.fmt(food.kcal100)
-                        + " ккал/100 г",
-                    13,
-                    MUTED));
+            labels.addView(ui.bold(FoodLabels.title(food), 17, INK));
+            labels.addView(ui.text(FoodLabels.details(form.original.catalog, food), 13, MUTED));
             ui.weighted(card, labels);
             if (form.entry == null) {
               Swipes.bind(
                   ui, card, () -> actions.quickAddFood(food), () -> actions.quickAddFood(food));
               card.setContentDescription(
                   food.name
+                      + (food.ingredients.isEmpty() ? "" : ". Составное блюдо")
                       + ". Нажмите, чтобы изменить вес, или смахните, чтобы добавить стандартную"
                       + " порцию.");
             }
@@ -146,7 +143,8 @@ public final class PortionScreen {
                   : form.query.isBlank()
                       ? "Недавно добавленные — в начале списка"
                       : "Сначала точные совпадения, затем похожие";
-          caption.setText(text + (form.entry == null ? " · Свайп — добавить" : ""));
+          caption.setText(
+              text + " · ⊞ — состав" + (form.entry == null ? " · Свайп — добавить" : ""));
         };
     ui.watch(
         search,
@@ -187,7 +185,7 @@ public final class PortionScreen {
           ui.icon("✎", "Редактировать продукт в справочнике", actions::editSelectedFood),
           ui.actionLayout(48, 52));
     ui.body.addView(nameRow);
-    if (!form.manual) {
+    if (form.newFood) {
       LinearLayout aliases = ui.column();
       aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
       ui.body.addView(
@@ -252,9 +250,11 @@ public final class PortionScreen {
           portionWeightField,
           value -> {
             if (refreshing) return;
-            form.portionWeightEdited = true;
-            form.weight = value;
-            form.dirty = true;
+            form.changePortionWeight(value);
+            if (form.selectedRecipe()) {
+              updateRecipeFields();
+              if (ingredientSection != null) ingredientSection.refresh();
+            }
             update.run();
           });
       ui.watch(
@@ -266,18 +266,20 @@ public final class PortionScreen {
             update.run();
           });
     }
-    if (form.newFood) {
-      new IngredientSection(
+    if (form.newFood || form.selectedRecipe()) {
+      ingredientSection =
+          new IngredientSection(
               ui,
               state,
               form.composition,
               () -> {
-                form.dirty = true;
+                form.compositionChanged();
                 updateRecipeFields();
                 update.run();
               },
-              recent)
-          .render(ui.body);
+              recent,
+              form.newFood);
+      ingredientSection.render(ui.body);
       updateRecipeFields();
     }
     ui.body.addView(total);
