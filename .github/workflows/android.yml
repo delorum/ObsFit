@@ -27,14 +27,14 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
       - name: Install matching Android SDK
         run: sdkmanager 'platforms;android-36.1' 'build-tools;36.1.0'
+      - name: Test release tooling
+        run: python3 -B -m unittest discover -s tools -p 'test_*.py'
       - name: Test and lint
+        if: github.event_name != 'workflow_dispatch' || !inputs.build_apk
         run: ./gradlew --no-daemon :core:test :app:lintDebug
-      - name: Assemble APK on explicit request
+      - name: Release APK on explicit request
         if: github.event_name == 'workflow_dispatch' && inputs.build_apk
-        run: ./gradlew --no-daemon :app:assembleDebug
-      - name: Check native libraries for 16 KB compatibility
-        if: github.event_name == 'workflow_dispatch' && inputs.build_apk
-        run: python3 tools/check-apk-alignment.py app/build/outputs/apk/debug/app-debug.apk
+        run: python3 tools/release.py
       - name: Upload test and lint reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
