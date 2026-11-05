@@ -43,10 +43,58 @@ public final class MealPlan {
 
   public static Guidance guidance(
       LocalDate date, LocalDateTime clock, List<Eaten> entries, double dailyLimit) {
-    if (!Double.isFinite(dailyLimit) || dailyLimit <= 0 || dailyLimit > 1_000_000_000)
-      dailyLimit = DAILY;
+    dailyLimit = validLimit(dailyLimit);
     double scale = dailyLimit / BASE_DAILY;
     LocalTime time = clock.toLocalTime();
+    var allocation = allocate(entries, dailyLimit, time);
+    int first = allocation.first;
+    double remaining = allocation.remaining;
+    boolean approximate = allocation.approximate;
+    if (first == SLOTS.size() || remaining < 1) {
+      Slot tomorrow = SLOTS.get(0);
+      return new Guidance(
+          null,
+          0,
+          tomorrow,
+          (int) Math.round(tomorrow.calories * scale),
+          date.plusDays(1).atTime(tomorrow.start),
+          remaining,
+          approximate,
+          true);
+    }
+    int[] budgets = allocation.budgets;
+    Slot active = null;
+    int allowed = 0;
+    if (!time.isBefore(SLOTS.get(first).start)) {
+      active = SLOTS.get(first);
+      allowed = budgets[0];
+    }
+    int next = first;
+    if (active != null) next++;
+    while (next < SLOTS.size() && budgets[next - first] <= 0) next++;
+    Slot upcoming = next < SLOTS.size() ? SLOTS.get(next) : SLOTS.get(0);
+    LocalDateTime nextAt =
+        next < SLOTS.size() ? date.atTime(upcoming.start) : date.plusDays(1).atTime(upcoming.start);
+    int nextKcal =
+        next < SLOTS.size() ? budgets[next - first] : (int) Math.round(upcoming.calories * scale);
+    return new Guidance(active, allowed, upcoming, nextKcal, nextAt, remaining, approximate, false);
+  }
+
+  private record Allocation(
+      int first, double[] consumed, double remaining, boolean approximate, int[] budgets) {}
+
+  private static double validLimit(double limit) {
+    return Double.isFinite(limit) && limit > 0 && limit <= 1_000_000_000 ? limit : DAILY;
+  }
+
+  private static int[] budgets(double[] consumed, int first, double limit, double remaining) {
+    double[] desired = new double[SLOTS.size() - first];
+    for (int i = first; i < SLOTS.size(); i++)
+      desired[i - first] = SLOTS.get(i).calories * limit / BASE_DAILY - consumed[i];
+    return distribute(desired, (int) Math.floor(Math.max(0, remaining) + 1e-8));
+  }
+
+  private static Allocation allocate(List<Eaten> entries, double dailyLimit, LocalTime time) {
     double[] consumed = new double[SLOTS.size()];
     double total = 0, unassigned = 0;
     boolean approximate = false;
@@ -68,37 +116,60 @@ public final class MealPlan {
     if (first < SLOTS.size() && time.isBefore(SLOTS.get(first).start) && first > 0)
       charge = first - 1;
     consumed[charge] += unassigned;
-    if (first == SLOTS.size() || remaining < 1) {
-      Slot tomorrow = SLOTS.get(0);
-      return new Guidance(
-          null,
-          0,
-          tomorrow,
-          (int) Math.round(tomorrow.calories * scale),
-          date.plusDays(1).atTime(tomorrow.start),
-          remaining,
-          approximate,
-          true);
+    return new Allocation(
+        first, consumed, remaining, approximate, budgets(consumed, first, dailyLimit, remaining));
+  }
+
+  public record SectionBudget(double eaten, int remaining, boolean closed) {
+    public String label() {
+      if (eaten == 0) return "≈" + Math.max(0, remaining) + " ккал";
+      String difference =
+          remaining < 0
+              ? "сверх ≈" + -remaining
+              : remaining > 0 ? (closed ? "недобор ≈" : "ещё ≈") + remaining : "по плану";
+      return VaultMarkdown.fmt(eaten) + " ккал\n" + difference;
     }
-    double[] desired = new double[SLOTS.size() - first];
-    for (int i = first; i < SLOTS.size(); i++)
-      desired[i - first] = SLOTS.get(i).calories * scale - consumed[i];
-    int[] budgets = distribute(desired, (int) Math.floor(remaining + 1e-8));
-    Slot active = null;
-    int allowed = 0;
-    if (!time.isBefore(SLOTS.get(first).start)) {
-      active = SLOTS.get(first);
-      allowed = budgets[0];
+  }
+
+  /** Same allocation as guidance; closed meals keep their own before-meal comparison. */
+  public static Map<String, SectionBudget> sectionBudgets(
+      LocalDate date, LocalDateTime now, VaultMarkdown.Day day) {
+    LocalTime time =
+        date.isBefore(now.toLocalDate())
+            ? LocalTime.MAX
+            : date.isAfter(now.toLocalDate()) ? LocalTime.MIN : now.toLocalTime();
+    double limit = validLimit(day.dailyLimit);
+    var entries = day.entries.stream().map(e -> new Eaten(e.section, e.kcal)).toList();
+    var allocation = allocate(entries, limit, time);
+    Map<String, SectionBudget> result = new LinkedHashMap<>();
+    for (int i = 0; i < SLOTS.size(); i++) {
+      String section = SLOTS.get(i).section;
+      double eaten = day.section(section).stream().mapToDouble(e -> e.kcal).sum();
+      int balance;
+      boolean closed = i < allocation.first;
+      if (closed) {
+        // Only earlier meals affect the allowance at the start of this closed meal.
+        double[] before = allocation.consumed.clone();
+        Arrays.fill(before, i, before.length, 0);
+        double available = limit - Arrays.stream(before).sum();
+        int allowance = budgets(before, i, limit, available)[0];
+        balance = eaten == 0 ? 0 : (int) Math.round(allowance - allocation.consumed[i]);
+      } else {
+        balance = allocation.budgets[i - allocation.first];
+        if (allocation.consumed[i] > 0) {
+          // Reconstruct its allowance without this meal to preserve a signed overrun.
+          double[] without = allocation.consumed.clone();
+          without[i] = 0;
+          double available = limit - Arrays.stream(without).sum();
+          int allowance =
+              budgets(without, allocation.first, limit, available)[i - allocation.first];
+          int delta = (int) Math.round(allowance - allocation.consumed[i]);
+          if (delta < 0) balance = delta;
+        }
+      }
+      result.put(section, new SectionBudget(eaten, balance, closed));
     }
-    int next = first;
-    if (active != null) next++;
-    while (next < SLOTS.size() && budgets[next - first] <= 0) next++;
-    Slot upcoming = next < SLOTS.size() ? SLOTS.get(next) : SLOTS.get(0);
-    LocalDateTime nextAt =
-        next < SLOTS.size() ? date.atTime(upcoming.start) : date.plusDays(1).atTime(upcoming.start);
-    int nextKcal =
-        next < SLOTS.size() ? budgets[next - first] : (int) Math.round(upcoming.calories * scale);
-    return new Guidance(active, allowed, upcoming, nextKcal, nextAt, remaining, approximate, false);
+    return Collections.unmodifiableMap(result);
   }
 
   private static int mainMeal(String section) {

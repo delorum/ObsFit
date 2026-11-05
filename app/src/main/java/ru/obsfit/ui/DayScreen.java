@@ -32,6 +32,7 @@ public final class DayScreen {
   private final AppController controller;
   private final AppState state;
   private final Actions actions;
+  private Map<String, MealPlan.SectionBudget> mealBudgets = Map.of();
 
   public DayScreen(Ui ui, AppController controller, Actions actions) {
     this.ui = ui;
@@ -103,6 +104,10 @@ public final class DayScreen {
         calories, () -> MealPlan.hint(state.day.note.date, LocalDateTime.now(), state.day.day));
     ui.body.addView(calories);
     ui.gap(ui.body, 20);
+    ui.onClock(
+        () ->
+            mealBudgets =
+                MealPlan.sectionBudgets(state.day.note.date, LocalDateTime.now(), state.day.day));
     for (String section : VaultMarkdown.SECTIONS) if (!section.equals("Заметки")) section(section);
     section("Заметки");
     new HealthSections(ui, state, actions).render();
@@ -119,17 +124,35 @@ public final class DayScreen {
     LinearLayout heading = ui.row();
     ui.weighted(heading, ui.bold((state.expanded.contains(name) ? "⌄  " : "›  ") + name, 18, INK));
     TextView sectionCalories = ui.text(VaultMarkdown.fmt(total) + " ккал", 14, ACCENT);
+    sectionCalories.setGravity(Gravity.END);
+    if (!name.equals("Заметки"))
+      ui.onClock(
+          () -> {
+            var budget = mealBudgets.get(name);
+            String labelText = budget.label();
+            if (!labelText.contentEquals(sectionCalories.getText()))
+              sectionCalories.setText(labelText);
+            sectionCalories.setTextColor(budget.remaining() < 0 ? RED : ACCENT);
+            sectionCalories.setContentDescription(labelText.replace("\n", ", "));
+            heading.setContentDescription(
+                name
+                    + ", "
+                    + labelText.replace("\n", ", ")
+                    + ", "
+                    + (state.expanded.contains(name) ? "свернуть" : "раскрыть"));
+          });
     heading.addView(sectionCalories);
     heading.addView(
         ui.icon("＋", "Добавить еду: " + name, () -> actions.portion(name, null)),
         ui.actionLayout(48, 48));
     heading.setMinimumHeight(ui.dp(48));
-    heading.setContentDescription(
-        name
-            + ", "
-            + VaultMarkdown.fmt(total)
-            + " килокалорий, "
-            + (state.expanded.contains(name) ? "свернуть" : "раскрыть"));
+    if (name.equals("Заметки"))
+      heading.setContentDescription(
+          name
+              + ", "
+              + VaultMarkdown.fmt(total)
+              + " килокалорий, "
+              + (state.expanded.contains(name) ? "свернуть" : "раскрыть"));
     heading.setOnClickListener(
         v -> {
           state.scrollY = ui.scroll.getScrollY();
