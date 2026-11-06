@@ -26,6 +26,7 @@ public final class AppState {
   public VaultRepository.CatalogSnapshot catalog;
   public PortionForm portion;
   public CatalogForm catalogForm;
+  public SportsPlan sportsPlan;
   public PortionForm.Draft returnPortion;
   public final Set<String> expanded = new HashSet<>();
   public String catalogQuery = "", pendingBarcode, error;

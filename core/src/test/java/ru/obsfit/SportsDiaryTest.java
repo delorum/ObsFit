@@ -16,10 +16,9 @@ public class SportsDiaryTest {
   }
 
   @Test
-  public void defaultsAreSingleApproachesAndDoNotInventBikeCalories() {
-    for (var e : SportsDiary.EXERCISES) assertNotNull(SportsDiary.preset(e, e.preset()));
-    assertNull(SportsDiary.preset(bike, bike.preset()).second());
-    assertEquals("15+15", SportsDiary.preset(arms, arms.preset()).format(arms));
+  public void singleApproachParsingDoesNotInventBikeCalories() {
+    assertNull(SportsDiary.preset(bike, "20 мин").second());
+    assertEquals("15+15", SportsDiary.preset(arms, "15+15").format(arms));
   }
 
   @Test

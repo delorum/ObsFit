@@ -211,6 +211,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     handler.postDelayed(poll, 12000);
     if (attached && repo != null && state.screen == AppState.Screen.DAY && state.day != null)
       checkDay(true);
+    if (attached && repo != null && state.screen == AppState.Screen.SETTINGS) refreshSportsPlan();
     watchDay();
   }
 
@@ -355,7 +356,19 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   public void openSettings() {
     if (state.busy) return;
     state.screen = AppState.Screen.SETTINGS;
+    state.sportsPlan = null;
     redraw();
+    refreshSportsPlan();
+  }
+
+  private void refreshSportsPlan() {
+    if (repo == null || state.busy) return;
+    task(
+        () -> repo.loadSportsPlan(),
+        plan -> {
+          state.sportsPlan = plan;
+          redraw();
+        });
   }
 
   private void connect(Uri uri, boolean save) {
@@ -389,8 +402,10 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         data -> {
           storage = data.storage();
           repo = data.repo();
+          state.sportsPlan = null;
           if (save) prefs.edit().putString("vault", uri.toString()).apply();
           controller.restore(saved, data.notes(), data.day(), data.catalog());
+          if (state.screen == AppState.Screen.SETTINGS) refreshSportsPlan();
           restoring = null;
           attached = true;
           redraw();
@@ -608,19 +623,27 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
 
   @Override
   public String workoutPreset(SportsDiary.Exercise exercise) {
-    return prefs.getString("workout:" + exercise.key(), exercise.preset());
+    return state.sportsPlan == null ? "—" : state.sportsPlan.value(exercise);
   }
 
   @Override
   public void editWorkoutPreset(SportsDiary.Exercise exercise) {
-    if (state.busy) return;
-    dialogs.workout(
-        exercise.name() + " · новый подход",
-        exercise,
-        SportsDiary.preset(exercise, workoutPreset(exercise)),
-        value -> {
-          prefs.edit().putString("workout:" + exercise.key(), value.format(exercise)).apply();
-          redraw();
+    if (state.busy || repo == null) return;
+    var source = repo;
+    task(
+        () -> source.loadSportsPlan(),
+        plan -> {
+          state.sportsPlan = plan;
+          dialogs.workoutPlan(
+              exercise,
+              plan.value(exercise),
+              value ->
+                  task(
+                      () -> source.saveSportsPlan(plan, exercise, value),
+                      updated -> {
+                        state.sportsPlan = updated;
+                        redraw();
+                      }));
         });
   }
 
@@ -634,8 +657,14 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         int next =
             SportsDiary.parse(exercise, SportsDiary.read(original.day.source, exercise.key()))
                 .size();
-        var preset = SportsDiary.preset(exercise, workoutPreset(exercise));
-        mutate(original, () -> SportsDiary.changeSet(original.day.source, exercise, next, preset));
+        var source = repo;
+        mutate(
+            original,
+            () -> {
+              var plan = source.loadSportsPlan();
+              return SportsDiary.changeSet(
+                  original.day.source, exercise, next, plan.approach(exercise, next));
+            });
       } else
         dialogs.workout(
             exercise.name() + " · подход " + (index + 1),

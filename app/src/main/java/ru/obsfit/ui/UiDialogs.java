@@ -7,6 +7,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import ru.obsfit.SportsDiary;
+import ru.obsfit.SportsPlan;
 
 /**
  * Presentation and confirmation only. File changes happen in supplied commands after acceptance.
@@ -104,6 +105,46 @@ public final class UiDialogs {
                         dialog.dismiss();
                       } catch (IllegalArgumentException failure) {
                         error.setText(failure.getMessage());
+                      }
+                    }));
+    dialog.show();
+  }
+
+  public void workoutPlan(SportsDiary.Exercise exercise, String initial, Consumer<String> save) {
+    LinearLayout fields = ui.column();
+    fields.setPadding(ui.dp(20), ui.dp(12), ui.dp(20), 0);
+    var value = ui.field(fields, "План подходов", initial, false, true);
+    fields.addView(
+        ui.text(
+            exercise.bike()
+                ? "Например: 20 мин"
+                : exercise.paired()
+                    ? "Например: 15+15|15+15 · подходы через |, руки через +"
+                    : "Например: 35|35 · подходы через |",
+            13,
+            Ui.MUTED));
+    fields.addView(
+        ui.text("Сохранится в История спорта.md и изменит расчёт целей Obsidian.", 13, Ui.MUTED));
+    var dialog =
+        new MaterialAlertDialogBuilder(ui.activity)
+            .setTitle(exercise.name())
+            .setView(fields)
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Сохранить", null)
+            .create();
+    dialog.setOnShowListener(
+        d ->
+            dialog
+                .getButton(-1)
+                .setOnClickListener(
+                    v -> {
+                      try {
+                        String raw = value.getText().toString();
+                        SportsPlan.validate(exercise, raw);
+                        save.accept(raw);
+                        dialog.dismiss();
+                      } catch (IllegalArgumentException failure) {
+                        value.setError(failure.getMessage());
                       }
                     }));
     dialog.show();

@@ -150,6 +150,17 @@ public final class VaultRepository {
     return loaded;
   }
 
+  public SportsPlan loadSportsPlan() throws IOException {
+    return new SportsPlan(storage.read(SportsPlan.PATH));
+  }
+
+  public synchronized SportsPlan saveSportsPlan(
+      SportsPlan original, SportsDiary.Exercise exercise, String value) throws IOException {
+    String updated = original.update(exercise, value);
+    write(SportsPlan.PATH, original.source, updated, "История спорта.md");
+    return loadSportsPlan();
+  }
+
   public CatalogSnapshot loadCatalog() throws IOException {
     return new CatalogSnapshot(storage.read("Еда.md"), storage.read("Замены.md"));
   }

@@ -5,16 +5,16 @@ import java.util.regex.*;
 
 /** Sports-only Markdown edits. Other sections, comments, food and calorie fields stay untouched. */
 public final class SportsDiary {
-  public record Exercise(String key, String name, boolean paired, boolean bike, String preset) {}
+  public record Exercise(String key, String name, boolean paired, boolean bike) {}
 
   public static final List<Exercise> EXERCISES =
       List.of(
-          new Exercise("Отжимания", "Отжимания", false, false, "35"),
-          new Exercise("ГантелиБицепс", "Бицепс · 11 кг", true, false, "15+15"),
-          new Exercise("ГантелиТрицепсВверх", "Гантель вверх · 11 кг", true, false, "15+15"),
-          new Exercise("Пресс", "Пресс", false, false, "25"),
-          new Exercise("Приседания", "Приседания", false, false, "40"),
-          new Exercise("Велотренажер", "Велотренажёр", false, true, "20 мин"));
+          new Exercise("Отжимания", "Отжимания", false, false),
+          new Exercise("ГантелиБицепс", "Бицепс · 11 кг", true, false),
+          new Exercise("ГантелиТрицепсВверх", "Гантель вверх · 11 кг", true, false),
+          new Exercise("Пресс", "Пресс", false, false),
+          new Exercise("Приседания", "Приседания", false, false),
+          new Exercise("Велотренажер", "Велотренажёр", false, true));
   private static final Pattern HEADING = Pattern.compile("^(#{1,6})\\s+(.+?)\\s*#*\\s*$");
   private static final String NUM = "\\d+(?:[.,]\\d+)?";
 
@@ -23,10 +23,12 @@ public final class SportsDiary {
   /** First is reps or minutes; second is the other arm or explicitly reported bike kcal. */
   public record Set(double first, Double second) {
     public String format(Exercise e) {
-      String a = VaultMarkdown.fmt(first);
+      String a = RecipeIngredients.weightText(first);
       return e.bike
-          ? a + " мин" + (second == null ? "" : " " + VaultMarkdown.fmt(second) + " ккал")
-          : a + (e.paired ? "+" + VaultMarkdown.fmt(second) : "");
+          ? a
+              + " мин"
+              + (second == null ? "" : " " + RecipeIngredients.weightText(second) + " ккал")
+          : a + (e.paired ? "+" + RecipeIngredients.weightText(second) : "");
     }
   }
 
@@ -34,18 +36,28 @@ public final class SportsDiary {
     public String first, second;
 
     public Form(Set set) {
-      first = VaultMarkdown.fmt(set.first);
-      second = set.second == null ? "" : VaultMarkdown.fmt(set.second);
+      first = RecipeIngredients.weightText(set.first);
+      second = set.second == null ? "" : RecipeIngredients.weightText(set.second);
     }
 
     public Set value(Exercise e) {
       double a = positive(first, false);
       Double b = null;
       if (e.paired || e.bike && !second.isBlank()) b = positive(second, false);
-      if (!e.bike && (a != Math.rint(a) || b != null && b != Math.rint(b)))
-        throw new IllegalArgumentException("Повторения должны быть целыми числами");
-      return new Set(a, b);
+      return checked(e, a, b);
     }
+  }
+
+  private static Set checked(Exercise e, double first, Double second) {
+    if (!Double.isFinite(first)
+        || first < 0
+        || first > 1_000_000
+        || e.paired && second == null
+        || second != null && (!Double.isFinite(second) || second < 0 || second > 1_000_000))
+      throw new IllegalArgumentException("Некорректное значение подхода");
+    if (!e.bike && (first != Math.rint(first) || second != null && second != Math.rint(second)))
+      throw new IllegalArgumentException("Повторения должны быть целыми числами");
+    return new Set(first, e.paired || e.bike ? second : null);
   }
 
   public static double positive(String raw, boolean strictly) {
@@ -70,19 +82,17 @@ public final class SportsDiary {
                 .matcher(s);
         if (!m.matches()) throw new IllegalArgumentException("Ожидается: 20 мин 120 ккал");
         result.add(
-            new Form(
-                    new Set(
-                        positive(m.group(1), false),
-                        m.group(2) == null ? null : positive(m.group(2), false)))
-                .value(e));
+            checked(
+                e,
+                positive(m.group(1), false),
+                m.group(2) == null ? null : positive(m.group(2), false)));
       } else {
         String[] arms = s.split("[+,]", -1);
         if (arms.length != (e.paired ? 2 : 1))
           throw new IllegalArgumentException(
               e.paired ? "Ожидается: 15+15|15+15" : "Ожидается: 35|35");
         result.add(
-            new Form(new Set(positive(arms[0], false), e.paired ? positive(arms[1], false) : null))
-                .value(e));
+            checked(e, positive(arms[0], false), e.paired ? positive(arms[1], false) : null));
       }
     }
     return List.copyOf(result);
@@ -191,7 +201,7 @@ public final class SportsDiary {
       throw new IllegalArgumentException("Подход больше не найден");
     if (replacement == null) sets.remove(index);
     else {
-      Set validated = new Form(replacement).value(e);
+      Set validated = checked(e, replacement.first, replacement.second);
       if (index == sets.size()) sets.add(validated);
       else sets.set(index, validated);
     }

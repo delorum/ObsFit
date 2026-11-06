@@ -60,10 +60,11 @@ public final class SettingsScreen {
       ui.body.addView(ui.button("Открыть дневник", actions::openDay));
       ui.gap(ui.body, 20);
     }
-    ui.body.addView(ui.bold("Тренировки · значения подхода", 18, INK));
+    ui.body.addView(ui.bold("Тренировки · план подходов", 18, INK));
     ui.body.addView(
         ui.text(
-            "Нажмите, чтобы изменить. Применяется к новым подходам; записанные остаются прежними.",
+            "Из История спорта.md. Нажмите для изменения общего плана. Уже записанные тренировки"
+                + " сохраняются.",
             14,
             MUTED));
     for (var exercise : SportsDiary.EXERCISES) {
