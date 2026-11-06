@@ -3,7 +3,7 @@ package ru.obsfit;
 import java.util.*;
 import java.util.regex.*;
 
-/** Shared approach defaults in Obsidian, independent of fixed annual goals and daily records. */
+/** One setting per exercise, backed by illustrative set notation in Obsidian. */
 public final class SportsPlan {
   public static final String PATH = "Дневник/Спорт и диета/История спорта.md";
 
@@ -19,9 +19,20 @@ public final class SportsPlan {
     };
   }
 
+  private static double fallback(SportsDiary.Exercise exercise) {
+    return switch (exercise.key()) {
+      case "Отжимания" -> 35;
+      case "ГантелиБицепс", "ГантелиТрицепсВверх" -> 15;
+      case "Пресс" -> 25;
+      case "Приседания" -> 40;
+      case "Велотренажер" -> 20;
+      default -> throw new IllegalArgumentException("Неизвестное упражнение");
+    };
+  }
+
   public final String source;
   private final Map<String, Integer> indices = new HashMap<>();
-  private final Map<String, List<SportsDiary.Set>> plans = new HashMap<>();
+  private final Map<String, Double> values = new HashMap<>();
   private final List<String> lines;
 
   public SportsPlan(String source) {
@@ -30,6 +41,7 @@ public final class SportsPlan {
     boolean[] text = VaultMarkdown.textLines(lines.toArray(String[]::new));
     for (var e : SportsDiary.EXERCISES) {
       String key = key(e);
+      values.put(key, fallback(e));
       Pattern field = Pattern.compile("^[ \\t]*" + Pattern.quote(key) + "::[ \\t]*(.*)$");
       for (int i = 0; i < lines.size(); i++) {
         if (!text[i]) continue;
@@ -37,42 +49,52 @@ public final class SportsPlan {
         if (!match.matches()) continue;
         if (indices.putIfAbsent(key, i) != null)
           throw new IllegalArgumentException("Повторяющийся ключ: " + key);
-        plans.put(key, validate(e, match.group(1)));
+        try {
+          var sets = SportsDiary.parse(e, match.group(1));
+          if (!sets.isEmpty())
+            values.put(key, validate(e, RecipeIngredients.weightText(sets.get(0).first())));
+        } catch (IllegalArgumentException malformed) {
+          // Invalid file values fall back for this exercise only; reading never rewrites the file.
+        }
       }
-      if (!indices.containsKey(key))
-        throw new IllegalArgumentException("В История спорта.md отсутствует " + key + "::");
     }
   }
 
-  public static List<SportsDiary.Set> validate(SportsDiary.Exercise e, String value) {
-    var sets = SportsDiary.parse(e, value);
-    if (sets.isEmpty()
-        || sets.stream().mapToDouble(SportsDiary.Set::first).sum() <= 0
-        || e.paired() && sets.stream().mapToDouble(s -> s.second()).sum() <= 0)
-      throw new IllegalArgumentException(key(e) + ": задайте положительный план");
-    return sets;
-  }
-
-  public static String format(SportsDiary.Exercise e, List<SportsDiary.Set> sets) {
-    return String.join("|", sets.stream().map(s -> s.format(e)).toList());
+  public static double validate(SportsDiary.Exercise e, String value) {
+    double number = SportsDiary.positive(value, true);
+    if (!e.bike() && number != Math.rint(number))
+      throw new IllegalArgumentException("Введите целое количество повторений");
+    return number;
   }
 
   public String value(SportsDiary.Exercise e) {
-    return format(e, plans.get(key(e)));
+    return RecipeIngredients.weightText(values.get(key(e)));
   }
 
   public SportsDiary.Set approach(SportsDiary.Exercise e, int index) {
     if (index < 0) throw new IllegalArgumentException("Некорректный номер подхода");
-    var sets = plans.get(key(e));
-    return sets.get(Math.min(index, sets.size() - 1));
+    double count = values.get(key(e));
+    return new SportsDiary.Set(count, e.paired() ? Double.valueOf(count) : null);
   }
 
   public String update(SportsDiary.Exercise e, String raw) {
-    String value = format(e, validate(e, raw));
+    double count = validate(e, raw);
+    String one = new SportsDiary.Set(count, e.paired() ? Double.valueOf(count) : null).format(e);
+    // Cycling keeps its single duration; repetitions illustrate two identical approaches.
+    String value = e.bike() ? one : one + "|" + one;
     List<String> changed = new ArrayList<>(lines);
-    int i = indices.get(key(e));
-    String line = lines.get(i);
-    changed.set(i, line.substring(0, line.indexOf("::") + 2) + " " + value);
+    Integer i = indices.get(key(e));
+    if (i == null) {
+      boolean[] text = VaultMarkdown.textLines(lines.toArray(String[]::new));
+      int insert = 0;
+      while (insert < text.length && !text[insert]) insert++;
+      if (insert == text.length)
+        throw new IllegalArgumentException("Не найдено место для ключа вне защищённой разметки");
+      changed.add(insert, key(e) + ":: " + value);
+    } else {
+      String line = lines.get(i);
+      changed.set(i, line.substring(0, line.indexOf("::") + 2) + " " + value);
+    }
     return String.join(source.contains("\r\n") ? "\r\n" : "\n", changed);
   }
 }

@@ -113,16 +113,23 @@ public final class UiDialogs {
   public void workoutPlan(SportsDiary.Exercise exercise, String initial, Consumer<String> save) {
     LinearLayout fields = ui.column();
     fields.setPadding(ui.dp(20), ui.dp(12), ui.dp(20), 0);
-    var value = ui.field(fields, "Подходы по умолчанию", initial, false, true);
-    fields.addView(
-        ui.text(
+    var value =
+        ui.field(
+            fields,
             exercise.bike()
-                ? "Например: 20 мин"
-                : exercise.paired()
-                    ? "Например: 15+15|15+15 · подходы через |, руки через +"
-                    : "Например: 35|35 · подходы через |",
-            13,
-            Ui.MUTED));
+                ? "Минуты"
+                : exercise.paired() ? "Повторения одной рукой за подход" : "Повторения за подход",
+            initial,
+            true,
+            true);
+    if (!exercise.bike())
+      fields.addView(
+          ui.text(
+              exercise.paired()
+                  ? "Одинаково для обеих рук и двух подходов."
+                  : "Одинаково для двух подходов.",
+              13,
+              Ui.MUTED));
     fields.addView(
         ui.text("Сохранится в История спорта.md. Годовые цели останутся прежними.", 13, Ui.MUTED));
     var dialog =

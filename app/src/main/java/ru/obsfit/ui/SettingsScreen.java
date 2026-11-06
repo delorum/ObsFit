@@ -71,7 +71,10 @@ public final class SettingsScreen {
       var row = ui.clickRow();
       row.setMinimumHeight(ui.dp(48));
       ui.weighted(row, ui.text(exercise.name(), 16, INK));
-      row.addView(ui.text(actions.workoutPreset(exercise), 15, ACCENT));
+      String value = actions.workoutPreset(exercise);
+      row.addView(
+          ui.text(
+              value.equals("—") ? value : value + (exercise.bike() ? " мин" : " раз"), 15, ACCENT));
       row.setOnClickListener(v -> actions.editWorkoutPreset(exercise));
       ui.body.addView(row);
     }
