@@ -57,7 +57,7 @@ public final class PortionForm {
       selectedFood = entry.food;
       manual = entry.weight == null;
       name = entry.name;
-      weight = entry.weight == null ? "100" : RecipeIngredients.weightText(entry.weight);
+      weight = entry.weight == null ? "100" : Numbers.plain(entry.weight);
       manualKcal = VaultMarkdown.fmt(entry.kcal);
       if (selectedFood != null) {
         name = selectedFood.name;
@@ -82,8 +82,8 @@ public final class PortionForm {
     kcal100 = VaultMarkdown.fmt(food.kcal100);
     weight =
         entry != null && entry.weight != null
-            ? RecipeIngredients.weightText(entry.weight)
-            : RecipeIngredients.weightText(food.weight);
+            ? Numbers.plain(entry.weight)
+            : Numbers.plain(food.weight);
     loadSelectedComposition();
     dirty = false;
   }
@@ -98,8 +98,7 @@ public final class PortionForm {
     choosing = false;
     name = "";
     aliases = "";
-    weight =
-        entry != null && entry.weight != null ? RecipeIngredients.weightText(entry.weight) : "100";
+    weight = entry != null && entry.weight != null ? Numbers.plain(entry.weight) : "100";
     defaultWeight = "100";
     kcal100 = "";
     dirty = false;
@@ -166,7 +165,7 @@ public final class PortionForm {
   public void recalculateRecipe() {
     if (!recipe()) return;
     var calculated = RecipeIngredients.nutrition(original.catalog, composition.ingredients);
-    defaultWeight = RecipeIngredients.weightText(calculated.weight());
+    defaultWeight = Numbers.plain(calculated.weight());
     kcal100 = VaultMarkdown.fmt(calculated.kcal100());
     if (newFood && !portionWeightEdited) weight = defaultWeight;
   }

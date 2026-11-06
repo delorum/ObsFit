@@ -663,7 +663,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
             () -> {
               var plan = source.loadSportsPlan();
               return SportsDiary.changeSet(
-                  original.day.source, exercise, next, plan.approach(exercise, next));
+                  original.day.source, exercise, next, plan.defaultApproach(exercise));
             });
       } else
         dialogs.workout(

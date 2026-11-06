@@ -27,10 +27,24 @@ public class SportsPlanTest {
       bike = SportsDiary.EXERCISES.get(5);
 
   @Test
+  public void exerciseRegistryHasUniqueDailyAndPlanKeysAndValidFallbacks() {
+    var all = SportsDiary.EXERCISES;
+    assertEquals(all.size(), all.stream().map(SportsDiary.Exercise::key).distinct().count());
+    assertEquals(all.size(), all.stream().map(SportsDiary.Exercise::planKey).distinct().count());
+    for (var e : all) {
+      assertFalse(e.key().isBlank());
+      assertFalse(e.name().isBlank());
+      assertTrue(e.planKey().startsWith("План"));
+      assertFalse(e.bike() && e.paired());
+      assertTrue(SportsPlan.validate(e, Numbers.plain(e.fallback())) > 0);
+    }
+  }
+
+  @Test
   public void mapsAllKeysIncludingHistoricOverheadName() {
     var plan = new SportsPlan(PLAN);
     assertEquals("35", plan.value(push));
-    assertEquals("ПланГантелиВверх", SportsPlan.key(SportsDiary.EXERCISES.get(2)));
+    assertEquals("ПланГантелиВверх", SportsDiary.EXERCISES.get(2).planKey());
     assertEquals("15", plan.value(arms));
     assertEquals("20", plan.value(bike));
   }
@@ -38,12 +52,13 @@ public class SportsPlanTest {
   @Test
   public void sameSettingAppliesToAllApproachesAndBothArms() {
     var plan = new SportsPlan(PLAN);
-    assertEquals(35, plan.approach(push, 0).first(), 0);
-    assertEquals(35, plan.approach(push, 1).first(), 0);
-    assertEquals(35, plan.approach(push, 99).first(), 0);
-    assertEquals(15, plan.approach(arms, 1).first(), 0);
-    assertEquals(15, plan.approach(arms, 1).second(), 0);
-    assertNull(plan.approach(bike, 0).second());
+    String source = Fixtures.DAY;
+    for (int i = 0; i < 3; i++)
+      source = SportsDiary.changeSet(source, push, i, plan.defaultApproach(push));
+    assertEquals("35|35|35", SportsDiary.read(source, push.key()));
+    assertEquals(15, plan.defaultApproach(arms).first(), 0);
+    assertEquals(15, plan.defaultApproach(arms).second(), 0);
+    assertNull(plan.defaultApproach(bike).second());
   }
 
   @Test
@@ -104,13 +119,13 @@ public class SportsPlanTest {
     assertTrue(plan.update(bike, "25,5").contains("ПланВелотренажер:: 25.5 мин"));
     assertFalse(plan.update(bike, "25,5").contains("25.5 мин|"));
     assertNull(
-        new SportsPlan(PLAN.replace("20 мин", "20 мин 120 ккал")).approach(bike, 0).second());
+        new SportsPlan(PLAN.replace("20 мин", "20 мин 120 ккал")).defaultApproach(bike).second());
   }
 
   @Test
   public void bikeMinutesRetainPrecisionRatherThanBeingRoundedDuringParsing() {
     var plan = new SportsPlan(PLAN.replace("20 мин", "0.001 мин"));
-    assertEquals(.001, plan.approach(bike, 0).first(), 0);
+    assertEquals(.001, plan.defaultApproach(bike).first(), 0);
     assertEquals("0.001", plan.value(bike));
   }
 
@@ -135,7 +150,7 @@ public class SportsPlanTest {
     var initial = repo.loadSportsPlan();
     String remote = PLAN.replace("35|25", "45|30");
     storage.data.put(SportsPlan.PATH, remote);
-    assertEquals(45, repo.loadSportsPlan().approach(push, 0).first(), 0);
+    assertEquals(45, repo.loadSportsPlan().defaultApproach(push).first(), 0);
     assertThrows(
         VaultRepository.StaleSnapshot.class, () -> repo.saveSportsPlan(initial, push, "40"));
     assertEquals(remote, storage.data.get(SportsPlan.PATH));

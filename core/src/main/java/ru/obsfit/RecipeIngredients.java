@@ -1,7 +1,5 @@
 package ru.obsfit;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.*;
 import java.util.regex.*;
 
@@ -57,15 +55,8 @@ public final class RecipeIngredients {
 
   public static String toMarkdown(List<Item> items) {
     List<String> rows = new ArrayList<>();
-    for (Item item : items) rows.add(item.name() + " " + weightText(item.grams()) + " г");
+    for (Item item : items) rows.add(item.name() + " " + Numbers.plain(item.grams()) + " г");
     return String.join("<br>", rows);
-  }
-
-  public static String weightText(double grams) {
-    return BigDecimal.valueOf(grams)
-        .round(new MathContext(15))
-        .stripTrailingZeros()
-        .toPlainString();
   }
 
   public static List<Item> flatten(VaultMarkdown.Catalog catalog, List<Item> items) {
@@ -116,7 +107,7 @@ public final class RecipeIngredients {
       double rounded = Math.round(amount * 100) / 100d;
       if (rounded > 0) amount = rounded;
       // Normalize the stored decimal before computing calories, including tiny positive weights.
-      amount = VaultMarkdown.number(weightText(amount));
+      amount = VaultMarkdown.number(Numbers.plain(amount));
       result.add(new Item(leaf.name(), amount));
     }
     return result;

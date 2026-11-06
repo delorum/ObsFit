@@ -5,16 +5,18 @@ import java.util.regex.*;
 
 /** Sports-only Markdown edits. Other sections, comments, food and calorie fields stay untouched. */
 public final class SportsDiary {
-  public record Exercise(String key, String name, boolean paired, boolean bike) {}
+  public record Exercise(
+      String key, String name, boolean paired, boolean bike, String planKey, double fallback) {}
 
   public static final List<Exercise> EXERCISES =
       List.of(
-          new Exercise("Отжимания", "Отжимания", false, false),
-          new Exercise("ГантелиБицепс", "Бицепс · 11 кг", true, false),
-          new Exercise("ГантелиТрицепсВверх", "Гантель вверх · 11 кг", true, false),
-          new Exercise("Пресс", "Пресс", false, false),
-          new Exercise("Приседания", "Приседания", false, false),
-          new Exercise("Велотренажер", "Велотренажёр", false, true));
+          new Exercise("Отжимания", "Отжимания", false, false, "ПланОтжимания", 35),
+          new Exercise("ГантелиБицепс", "Бицепс · 11 кг", true, false, "ПланГантелиБицепс", 15),
+          new Exercise(
+              "ГантелиТрицепсВверх", "Гантель вверх · 11 кг", true, false, "ПланГантелиВверх", 15),
+          new Exercise("Пресс", "Пресс", false, false, "ПланПресс", 25),
+          new Exercise("Приседания", "Приседания", false, false, "ПланПриседания", 40),
+          new Exercise("Велотренажер", "Велотренажёр", false, true, "ПланВелотренажер", 20));
   private static final Pattern HEADING = Pattern.compile("^(#{1,6})\\s+(.+?)\\s*#*\\s*$");
   private static final String NUM = "\\d+(?:[.,]\\d+)?";
 
@@ -23,12 +25,10 @@ public final class SportsDiary {
   /** First is reps or minutes; second is the other arm or explicitly reported bike kcal. */
   public record Set(double first, Double second) {
     public String format(Exercise e) {
-      String a = RecipeIngredients.weightText(first);
+      String a = Numbers.plain(first);
       return e.bike
-          ? a
-              + " мин"
-              + (second == null ? "" : " " + RecipeIngredients.weightText(second) + " ккал")
-          : a + (e.paired ? "+" + RecipeIngredients.weightText(second) : "");
+          ? a + " мин" + (second == null ? "" : " " + Numbers.plain(second) + " ккал")
+          : a + (e.paired ? "+" + Numbers.plain(second) : "");
     }
   }
 
@@ -36,8 +36,8 @@ public final class SportsDiary {
     public String first, second;
 
     public Form(Set set) {
-      first = RecipeIngredients.weightText(set.first);
-      second = set.second == null ? "" : RecipeIngredients.weightText(set.second);
+      first = Numbers.plain(set.first);
+      second = set.second == null ? "" : Numbers.plain(set.second);
     }
 
     public Set value(Exercise e) {

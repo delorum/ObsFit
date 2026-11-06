@@ -401,7 +401,7 @@ public final class VaultMarkdown {
       return prefix
           + (weight == null
               ? (name.isBlank() ? "" : name + " ") + fmt(kcal) + " ккал"
-              : name + " " + RecipeIngredients.weightText(weight) + " г " + fmt(kcal) + " ккал")
+              : name + " " + Numbers.plain(weight) + " г " + fmt(kcal) + " ккал")
           + suffix;
     }
   }
@@ -571,7 +571,7 @@ public final class VaultMarkdown {
       throw new IllegalArgumentException("Проверьте вес и калорийность");
     return name.trim()
         + " "
-        + RecipeIngredients.weightText(grams)
+        + Numbers.plain(grams)
         + " г "
         + Math.round(grams * kcal100 / 100)
         + " ккал";

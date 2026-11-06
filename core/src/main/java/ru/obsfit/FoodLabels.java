@@ -15,7 +15,7 @@ public final class FoodLabels {
         RecipeIngredients.portion(
                 catalog, List.of(new RecipeIngredients.Item(food.name, food.weight)), food.weight)
             .calories();
-    return RecipeIngredients.weightText(food.weight)
+    return Numbers.plain(food.weight)
         + " г · "
         + VaultMarkdown.fmt(food.kcal100)
         + " ккал/100 г · "
