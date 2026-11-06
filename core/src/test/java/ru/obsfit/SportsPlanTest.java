@@ -7,11 +7,21 @@ import org.junit.Test;
 
 public class SportsPlanTest {
   private static final String PLAN =
-      "# История спорта\nДатаНачала:: 2026-11-01\n"
-          + "ПланОтжимания:: 35|25\nПланГантелиБицепс:: 15+14|12+11\n"
-          + "ПланГантелиВверх:: 15+15|15+15\nПланПресс:: 25|25\n"
-          + "ПланПриседания:: 40|40\nПланВелотренажер:: 20 мин\n"
-          + "\n```dataviewjs\nawait dv.view(\"sportHistory\");\n```\nПрочий текст\n";
+      "# История спорта\n"
+          + "ДатаНачала:: 2026-11-01\n"
+          + "ГодоваяЦельОтжимания:: 8736\n"
+          + "ГодоваяЦельГантелиБицепс:: 3744+3744\n"
+          + "ПланОтжимания:: 35|25\n"
+          + "ПланГантелиБицепс:: 15+14|12+11\n"
+          + "ПланГантелиВверх:: 15+15|15+15\n"
+          + "ПланПресс:: 25|25\n"
+          + "ПланПриседания:: 40|40\n"
+          + "ПланВелотренажер:: 20 мин\n"
+          + "\n"
+          + "```dataviewjs\n"
+          + "await dv.view(\"sportHistory\");\n"
+          + "```\n"
+          + "Прочий текст\n";
   private final SportsDiary.Exercise push = SportsDiary.EXERCISES.get(0),
       arms = SportsDiary.EXERCISES.get(1),
       bike = SportsDiary.EXERCISES.get(5);

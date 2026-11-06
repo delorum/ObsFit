@@ -113,7 +113,7 @@ public final class UiDialogs {
   public void workoutPlan(SportsDiary.Exercise exercise, String initial, Consumer<String> save) {
     LinearLayout fields = ui.column();
     fields.setPadding(ui.dp(20), ui.dp(12), ui.dp(20), 0);
-    var value = ui.field(fields, "План подходов", initial, false, true);
+    var value = ui.field(fields, "Подходы по умолчанию", initial, false, true);
     fields.addView(
         ui.text(
             exercise.bike()
@@ -124,7 +124,7 @@ public final class UiDialogs {
             13,
             Ui.MUTED));
     fields.addView(
-        ui.text("Сохранится в История спорта.md и изменит расчёт целей Obsidian.", 13, Ui.MUTED));
+        ui.text("Сохранится в История спорта.md. Годовые цели останутся прежними.", 13, Ui.MUTED));
     var dialog =
         new MaterialAlertDialogBuilder(ui.activity)
             .setTitle(exercise.name())

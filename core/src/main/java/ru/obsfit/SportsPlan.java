@@ -3,7 +3,7 @@ package ru.obsfit;
 import java.util.*;
 import java.util.regex.*;
 
-/** Shared complete workout plans in Obsidian, separate from the daily recorded approaches. */
+/** Shared approach defaults in Obsidian, independent of fixed annual goals and daily records. */
 public final class SportsPlan {
   public static final String PATH = "Дневник/Спорт и диета/История спорта.md";
 
