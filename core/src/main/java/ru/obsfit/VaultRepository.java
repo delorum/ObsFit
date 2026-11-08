@@ -161,9 +161,7 @@ public final class VaultRepository {
     FoodOccurrences occurrences = new FoodOccurrences(catalog);
     for (var note : new NoteIndex(storage).between(today.minusDays(MealUsage.DAYS - 1), today))
       usage.replaceDay(
-          note.date,
-          occurrences.find(VaultMarkdown.day(storage.read(note.path), catalog).entries),
-          today);
+          note.date, occurrences.find(VaultMarkdown.day(storage.read(note.path), catalog)), today);
     usage.markRebuilt(today);
     return usage;
   }

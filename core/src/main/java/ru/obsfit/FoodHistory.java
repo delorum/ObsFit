@@ -102,7 +102,7 @@ public final class FoodHistory {
         String text = storage.read(note.path);
         checkCancelled();
         var found =
-            occurrences.find(VaultMarkdown.day(text, catalog).entries).stream()
+            occurrences.find(VaultMarkdown.day(text, catalog)).stream()
                 .filter(entry -> entry.food() == food)
                 .sorted(Comparator.comparingInt(FoodOccurrences.Occurrence::line).reversed())
                 .map(

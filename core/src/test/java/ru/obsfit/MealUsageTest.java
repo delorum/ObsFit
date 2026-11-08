@@ -135,7 +135,7 @@ public class MealUsageTest {
             null,
             "",
             "future-version\n-\n",
-            "meal-usage-v2\nbad-date\n",
+            "meal-usage-v3\nbad-date\n",
             usage.encode(TODAY) + "invalid\n",
             usage.encode(TODAY).replace("\t1\n", "\t-1\n"))) {
       var decoded = MealUsage.decode(encoded, TODAY);

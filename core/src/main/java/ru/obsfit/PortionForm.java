@@ -243,6 +243,7 @@ public final class PortionForm {
                 VaultMarkdown.number(weight),
                 newFood ? catalog.get(title).kcal100 : VaultMarkdown.number(kcal100));
       }
+      if (food != null && !food.ingredients.isEmpty()) line = RecipeBlocks.wrap(food.name, line);
     }
     String updated =
         entry == null

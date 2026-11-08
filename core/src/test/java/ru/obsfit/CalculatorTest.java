@@ -190,7 +190,8 @@ public class CalculatorTest {
     apply(c, "60/2");
     assertEquals("30", c.state.portion.weight);
     assertEquals(70, c.state.portion.total(), 0);
-    assertTrue(c.state.portion.save().noteText().contains("хлеб 20 г 40 ккал\nсыр 10 г 30 ккал"));
+    assertTrue(
+        c.state.portion.save().noteText().contains("хлеб 20 г 40 ккал\n  - сыр 10 г 30 ккал"));
   }
 
   @Test

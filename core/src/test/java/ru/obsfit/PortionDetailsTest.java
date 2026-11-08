@@ -27,7 +27,7 @@ public class PortionDetailsTest {
         List.of(new RecipeIngredients.Item("хлеб", 20), new RecipeIngredients.Item("сыр", 10)),
         form.composition.ingredients);
     assertEquals(70, form.total(), 0);
-    assertTrue(form.save().noteText().contains("хлеб 20 г 40 ккал\nсыр 10 г 30 ккал"));
+    assertTrue(form.save().noteText().contains("хлеб 20 г 40 ккал\n  - сыр 10 г 30 ккал"));
   }
 
   @Test
@@ -43,7 +43,7 @@ public class PortionDetailsTest {
     assertNull(save.newFood());
     assertEquals(before, form.original.foodText);
     assertEquals("хл 40 г<br>сыр 20 г", form.original.catalog.get("ббр").ingredients);
-    assertTrue(save.noteText().contains("хлеб 20 г 40 ккал\nсыр 20 г 60 ккал"));
+    assertTrue(save.noteText().contains("хлеб 20 г 40 ккал\n  - сыр 20 г 60 ккал"));
   }
 
   @Test

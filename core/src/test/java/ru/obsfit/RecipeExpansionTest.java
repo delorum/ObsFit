@@ -29,7 +29,7 @@ public class RecipeExpansionTest {
     assertEquals(2, day.section("Обед").size());
     assertTrue(save.noteText().contains("хлеб 20 г 40 ккал"));
     assertTrue(save.noteText().contains("сыр 10 г 30 ккал"));
-    assertFalse(save.noteText().contains("бутерброд"));
+    assertTrue(save.noteText().contains("бутерброд:\n  - хлеб"));
     assertEquals(70, form.total(), 0);
     assertEquals(150, day.total, 0);
     assertTrue(save.noteText().contains("СъеденоКалорий:: 150"));
@@ -66,13 +66,13 @@ public class RecipeExpansionTest {
   }
 
   @Test
-  public void editingLegacyRecipeReplacesItWithLeavesAndKeepsEveryBulletPrefix() {
+  public void editingLegacyRecipeReplacesItWithALabelAndIndentedLeaves() {
     String note = Fixtures.DAY.replace("### Завтрак", "### Обед\n- ббр 60 г 140 ккал\n### Завтрак");
     var snapshot = Fixtures.day(note, Fixtures.FOOD);
     var form = new PortionForm(snapshot, "Обед", snapshot.day.section("Обед").get(0));
     form.weight = "30";
     var saved = form.save().noteText();
-    assertTrue(saved.contains("- хлеб 20 г 40 ккал\n- сыр 10 г 30 ккал"));
+    assertTrue(saved.contains("бутерброд:\n  - хлеб 20 г 40 ккал\n  - сыр 10 г 30 ккал"));
     assertEquals(2, VaultMarkdown.day(saved, snapshot.catalog).section("Обед").size());
     assertEquals(150, VaultMarkdown.day(saved, snapshot.catalog).total, 0);
     assertFalse(saved.contains("140 ккал"));

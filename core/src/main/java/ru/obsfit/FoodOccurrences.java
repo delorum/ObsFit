@@ -61,6 +61,28 @@ public final class FoodOccurrences {
   }
 
   public List<Occurrence> find(List<VaultMarkdown.Entry> entries) {
+    return find(entries, Set.of());
+  }
+
+  public List<Occurrence> find(VaultMarkdown.Day day) {
+    Set<Integer> owned = new HashSet<>();
+    for (var group : day.recipes) for (var entry : group.entries()) owned.add(entry.line);
+    List<Occurrence> result = find(day.entries, owned);
+    for (var group : day.recipes) {
+      if (group.food() == null || group.entries().isEmpty()) continue;
+      double calories =
+          group.entries().stream()
+              .mapToDouble(e -> e.recordedKcal == null ? e.kcal : e.recordedKcal)
+              .sum();
+      boolean estimated = group.entries().stream().anyMatch(e -> e.recordedKcal == null);
+      result.add(
+          new Occurrence(
+              group.food(), group.section(), group.line(), group.grams(), calories, estimated));
+    }
+    return result;
+  }
+
+  private List<Occurrence> find(List<VaultMarkdown.Entry> entries, Set<Integer> owned) {
     List<Occurrence> result = new ArrayList<>();
     Map<String, Meal> meals = new LinkedHashMap<>();
     for (var entry : entries) {
@@ -70,7 +92,7 @@ public final class FoodOccurrences {
       result.add(
           new Occurrence(
               entry.food, section, entry.line, entry.weight, calories, entry.recordedKcal == null));
-      if (recipes.isEmpty()) continue;
+      if (recipes.isEmpty() || owned.contains(entry.line)) continue;
       Meal meal = meals.computeIfAbsent(section, ignored -> new Meal());
       meal.explicit.add(entry.food);
       if (entry.weight <= 0) continue;

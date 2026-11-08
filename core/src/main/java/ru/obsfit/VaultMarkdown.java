@@ -412,9 +412,15 @@ public final class VaultMarkdown {
   public static final class Day {
     public final String source;
     public final List<Entry> entries;
+    public final List<RecipeBlocks.Group> recipes;
     public final double total, dailyLimit;
 
     public Day(String source, List<Entry> entries) {
+      this(source, entries, List.of());
+    }
+
+    public Day(String source, List<Entry> entries, List<RecipeBlocks.Group> recipes) {
+      this.recipes = List.copyOf(recipes);
       this.source = source;
       this.dailyLimit = dailyLimit(source);
       this.entries = List.copyOf(entries);
@@ -511,7 +517,7 @@ public final class VaultMarkdown {
     String section = "Заметки";
     for (int i = 0; i < lines.length; i++) {
       String raw = lines[i], s = raw.trim();
-      if (!text[i]) continue;
+      if (!text[i] || RecipeBlocks.label(raw) != null) continue;
       Matcher heading = HEADING.matcher(s);
       if (heading.matches()) {
         String headingSection = sectionName(heading.group(2));
@@ -569,7 +575,7 @@ public final class VaultMarkdown {
             new Entry(
                 i, raw, name, section, p.group(1), p.group(3), grams, kcal, recordedKcal, food));
     }
-    return new Day(source, entries);
+    return new Day(source, entries, RecipeBlocks.parse(source, entries, catalog));
   }
 
   public static String portion(String name, double grams, double kcal100) {
@@ -620,16 +626,26 @@ public final class VaultMarkdown {
     List<String> lines = new ArrayList<>(Arrays.asList(lines(source)));
     if (entry.line >= lines.size() || !lines.get(entry.line).equals(entry.raw))
       throw new IllegalStateException("Запись изменилась. Обновите день и повторите действие.");
+    var affected =
+        day(source, catalog).recipes.stream()
+            .filter(group -> group.entries().stream().anyMatch(child -> child.line == entry.line))
+            .toList();
     if (replacement == null) lines.remove(entry.line);
     else {
-      List<String> replacements =
-          Arrays.stream(lines(replacement))
-              .map(line -> entry.prefix + line + entry.suffix)
-              .toList();
+      String[] replacementLines = lines(replacement);
+      String childPrefix =
+          RecipeBlocks.label(replacementLines[0]) != null
+              ? entry.prefix.replaceFirst("(?:[-+*]|\\d+[.)])\\s+$", "")
+              : entry.prefix;
+      List<String> replacements = new ArrayList<>();
+      for (int i = 0; i < replacementLines.length; i++)
+        replacements.add(
+            (i == 0 ? entry.prefix : childPrefix) + replacementLines[i] + entry.suffix);
       lines.remove(entry.line);
       lines.addAll(entry.line, replacements);
     }
-    return recalculate(join(lines, source), catalog);
+    return recalculate(
+        RecipeBlocks.cleanAfterEdit(join(lines, source), catalog, affected), catalog);
   }
 
   public static String move(String source, Entry entry, String target, Catalog catalog) {

@@ -311,7 +311,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   private void updateMealUsage(VaultRepository.Snapshot day) {
     if (day == null) return;
     state.mealUsage.replaceDay(
-        day.note.date, new FoodOccurrences(day.catalog).find(day.day.entries), LocalDate.now());
+        day.note.date, new FoodOccurrences(day.catalog).find(day.day), LocalDate.now());
     persistMealUsage();
   }
 

@@ -167,7 +167,7 @@ public class RecipeRecognitionTest {
     var restored = MealUsage.decode(usage.encode(TODAY), TODAY);
     assertEquals(14, restored.frequency(catalog.get("ббр"), "Обед", TODAY));
     assertFalse(
-        MealUsage.decode(usage.encode(TODAY).replace("meal-usage-v2", "meal-usage-v1"), TODAY)
+        MealUsage.decode(usage.encode(TODAY).replace("meal-usage-v3", "meal-usage-v1"), TODAY)
             .rebuilt());
   }
 

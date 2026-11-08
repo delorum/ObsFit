@@ -167,10 +167,57 @@ public final class DayScreen {
     card.addView(heading);
     if (state.expanded.contains(name)) {
       if (entries.isEmpty()) card.addView(ui.text("Пока ничего", 14, MUTED));
-      for (var entry : entries) card.addView(entry(entry));
+      foodRows(card, entries, name, -1);
     }
     ui.body.addView(card);
     ui.gap(ui.body, 10);
+  }
+
+  private void foodRows(
+      LinearLayout parent, List<VaultMarkdown.Entry> entries, String section, int parentLine) {
+    List<RecipeBlocks.Group> groups = new ArrayList<>();
+    for (var group : state.day.day.recipes)
+      if (group.section().equals(section)
+          && group.parentLine() == parentLine
+          && !group.entries().isEmpty()) groups.add(group);
+    Map<Integer, View> rows = new TreeMap<>();
+    for (var item : entries) {
+      boolean nested =
+          groups.stream().anyMatch(group -> item.line > group.line() && item.line < group.end());
+      if (!nested) rows.put(item.line, entry(item));
+    }
+    for (var group : groups) rows.put(group.line(), recipe(group));
+    for (var view : rows.values()) parent.addView(view);
+  }
+
+  private View recipe(RecipeBlocks.Group group) {
+    String key = "recipe:" + state.day.note.path + ":" + group.line();
+    boolean expanded = state.expanded.contains(key);
+    LinearLayout wrapper = ui.column();
+    LinearLayout heading = ui.row();
+    heading.setMinimumHeight(ui.dp(48));
+    ui.weighted(heading, ui.bold((expanded ? "⌄ " : "› ") + group.name(), 16, INK));
+    heading.addView(ui.text(VaultMarkdown.fmt(group.calories()) + " ккал", 14, ACCENT));
+    heading.setContentDescription(
+        group.name()
+            + ", "
+            + VaultMarkdown.fmt(group.calories())
+            + " ккал, "
+            + (expanded ? "свернуть" : "раскрыть ингредиенты"));
+    heading.setOnClickListener(
+        v -> {
+          state.scrollY = ui.scroll.getScrollY();
+          if (!state.expanded.add(key)) state.expanded.remove(key);
+          actions.redraw();
+        });
+    wrapper.addView(heading);
+    if (expanded) {
+      LinearLayout children = ui.column();
+      children.setPadding(ui.dp(10), 0, 0, 0);
+      foodRows(children, group.entries(), group.section(), group.line());
+      wrapper.addView(children);
+    }
+    return wrapper;
   }
 
   private View entry(VaultMarkdown.Entry entry) {
