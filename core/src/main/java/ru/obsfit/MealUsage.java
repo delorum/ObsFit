@@ -10,7 +10,7 @@ import java.util.*;
  */
 public final class MealUsage {
   public static final int DAYS = 14;
-  private static final String VERSION = "meal-usage-v1";
+  private static final String VERSION = "meal-usage-v2";
   private final NavigableMap<LocalDate, Map<String, Map<String, Integer>>> days = new TreeMap<>();
   private LocalDate rebuilt;
 
@@ -35,16 +35,15 @@ public final class MealUsage {
     rebuilt = today;
   }
 
-  public void replaceDay(LocalDate date, List<VaultMarkdown.Entry> entries, LocalDate today) {
+  public void replaceDay(
+      LocalDate date, List<FoodOccurrences.Occurrence> occurrences, LocalDate today) {
     prune(today);
     if (!includes(date, today)) return;
     Map<String, Map<String, Integer>> counts = new TreeMap<>();
-    for (var entry : entries) {
-      if (entry.food == null)
-        continue; // Manual calories and unknown products have no catalog identity.
+    for (var occurrence : occurrences) {
       counts
-          .computeIfAbsent(group(entry.section), ignored -> new TreeMap<>())
-          .merge(VaultMarkdown.key(entry.food.name), 1, Integer::sum);
+          .computeIfAbsent(group(occurrence.section()), ignored -> new TreeMap<>())
+          .merge(VaultMarkdown.key(occurrence.food().name), 1, Integer::sum);
     }
     if (counts.isEmpty()) days.remove(date);
     else days.put(date, counts);

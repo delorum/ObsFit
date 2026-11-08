@@ -56,6 +56,7 @@ public final class FoodHistory {
     private final NoteIndex index;
     private final VaultMarkdown.Catalog catalog;
     private final VaultMarkdown.Food food;
+    private final FoodOccurrences occurrences;
     private final Deque<VaultRepository.Note> notes = new ArrayDeque<>();
     private final Deque<Hit> matches = new ArrayDeque<>();
     // Kept across a provider failure: retry must neither lose nor duplicate partial-page hits.
@@ -70,6 +71,7 @@ public final class FoodHistory {
       this.storage = storage;
       this.catalog = catalog;
       this.food = food;
+      occurrences = new FoodOccurrences(catalog, List.of(food));
       index = new NoteIndex(storage);
     }
 
@@ -100,20 +102,19 @@ public final class FoodHistory {
         String text = storage.read(note.path);
         checkCancelled();
         var found =
-            VaultMarkdown.day(text, catalog).entries.stream()
-                .filter(entry -> entry.food == food && entry.weight != null)
-                .sorted(
-                    Comparator.comparingInt((VaultMarkdown.Entry entry) -> entry.line).reversed())
+            occurrences.find(VaultMarkdown.day(text, catalog).entries).stream()
+                .filter(entry -> entry.food() == food)
+                .sorted(Comparator.comparingInt(FoodOccurrences.Occurrence::line).reversed())
                 .map(
                     entry ->
                         new Hit(
                             note.date,
                             note.path,
-                            entry.line,
-                            entry.section,
-                            entry.weight,
-                            entry.recordedKcal == null ? entry.kcal : entry.recordedKcal,
-                            entry.recordedKcal == null))
+                            entry.line(),
+                            entry.section(),
+                            entry.grams(),
+                            entry.calories(),
+                            entry.estimated()))
                 .toList();
         notes.removeFirst();
         matches.addAll(found);

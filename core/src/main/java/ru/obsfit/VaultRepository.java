@@ -158,9 +158,12 @@ public final class VaultRepository {
   public MealUsage rebuildMealUsage(LocalDate today, VaultMarkdown.Catalog catalog)
       throws IOException {
     MealUsage usage = new MealUsage();
+    FoodOccurrences occurrences = new FoodOccurrences(catalog);
     for (var note : new NoteIndex(storage).between(today.minusDays(MealUsage.DAYS - 1), today))
       usage.replaceDay(
-          note.date, VaultMarkdown.day(storage.read(note.path), catalog).entries, today);
+          note.date,
+          occurrences.find(VaultMarkdown.day(storage.read(note.path), catalog).entries),
+          today);
     usage.markRebuilt(today);
     return usage;
   }

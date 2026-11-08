@@ -26,7 +26,7 @@ public final class FoodHistoryScreen {
   public void render() {
     if (!form.food.ingredients.isEmpty())
       ui.body.addView(
-          ui.text("Если блюдо разложено, его история доступна по ингредиентам.", 13, MUTED));
+          ui.text("≈ Блюдо найдено, если все ингредиенты есть в одном приёме пищи.", 13, MUTED));
     list = ui.column();
     ui.body.addView(list);
     footer = ui.text("", 14, MUTED);
@@ -82,7 +82,7 @@ public final class FoodHistoryScreen {
                     ? form.hits.isEmpty() ? "Записей не найдено" : "Вся история загружена"
                     : "Прокрутите вниз, чтобы загрузить ещё");
     if (form.hits.stream().anyMatch(FoodHistory.Hit::estimated))
-      footer.append("\n≈ — восстановлено по текущему справочнику");
+      footer.append("\n≈ — восстановлено по составу или текущему справочнику");
     footer.setTextColor(form.error == null ? MUTED : RED);
     retry.setVisibility(form.error == null ? View.GONE : View.VISIBLE);
   }

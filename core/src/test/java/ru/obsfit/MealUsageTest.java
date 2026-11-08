@@ -12,7 +12,8 @@ public class MealUsageTest {
   private final VaultMarkdown.Catalog catalog = Fixtures.catalog().catalog;
 
   private void day(MealUsage usage, LocalDate date, String body) {
-    usage.replaceDay(date, VaultMarkdown.day(body, catalog).entries, TODAY);
+    usage.replaceDay(
+        date, new FoodOccurrences(catalog).find(VaultMarkdown.day(body, catalog).entries), TODAY);
   }
 
   private long count(MealUsage usage, String food, String section) {
@@ -71,11 +72,13 @@ public class MealUsageTest {
     var usage = new MealUsage();
     usage.replaceDay(
         TODAY,
-        VaultMarkdown.day(
-                "### Обед\nхл 40 г 0 ккал\nхлеб 80 ккал\n"
-                    + "```\nхл 40\n```\n> хл 40\n<!-- хл 40 -->\n",
-                zeroCatalog)
-            .entries,
+        new FoodOccurrences(zeroCatalog)
+            .find(
+                VaultMarkdown.day(
+                        "### Обед\nхл 40 г 0 ккал\nхлеб 80 ккал\n"
+                            + "```\nхл 40\n```\n> хл 40\n<!-- хл 40 -->\n",
+                        zeroCatalog)
+                    .entries),
         TODAY);
     assertEquals(1, usage.frequency(zeroCatalog.get("хлеб"), "Обед", TODAY));
   }
@@ -86,13 +89,12 @@ public class MealUsageTest {
     day(usage, TODAY, "### Обед\nхл 40\n");
     var renamed = new VaultMarkdown.Food("новый хлеб", List.of("хлеб", "ХЛЕБ", "хл"), "", 200, 40);
     assertEquals(1, usage.frequency(renamed, "Обед", TODAY));
+    var renamedCatalog =
+        VaultMarkdown.catalog(Fixtures.FOOD.replace("хлеб<br>хл", "новый хлеб<br>хлеб<br>хл"));
     usage.replaceDay(
         TODAY.minusDays(1),
-        VaultMarkdown.day(
-                "### Обед\nновый хлеб 40\n",
-                VaultMarkdown.catalog(
-                    Fixtures.FOOD.replace("хлеб<br>хл", "новый хлеб<br>хлеб<br>хл")))
-            .entries,
+        new FoodOccurrences(renamedCatalog)
+            .find(VaultMarkdown.day("### Обед\nновый хлеб 40\n", renamedCatalog).entries),
         TODAY);
     assertEquals(2, usage.frequency(renamed, "Обед", TODAY));
   }
@@ -103,7 +105,11 @@ public class MealUsageTest {
     for (int i = 100; i >= 0; i--) {
       LocalDate date = TODAY.minusDays(i);
       for (int retry = 0; retry < 5; retry++)
-        usage.replaceDay(date, VaultMarkdown.day("### Перекус 2\nхл 40\n", catalog).entries, date);
+        usage.replaceDay(
+            date,
+            new FoodOccurrences(catalog)
+                .find(VaultMarkdown.day("### Перекус 2\nхл 40\n", catalog).entries),
+            date);
     }
     usage.markRebuilt(TODAY);
     String encoded = usage.encode(TODAY);
@@ -129,7 +135,7 @@ public class MealUsageTest {
             null,
             "",
             "future-version\n-\n",
-            "meal-usage-v1\nbad-date\n",
+            "meal-usage-v2\nbad-date\n",
             usage.encode(TODAY) + "invalid\n",
             usage.encode(TODAY).replace("\t1\n", "\t-1\n"))) {
       var decoded = MealUsage.decode(encoded, TODAY);
@@ -163,15 +169,15 @@ public class MealUsageTest {
   }
 
   @Test
-  public void expandedRecipesCountTheSameIngredientsBeforeAndAfterRebuild() {
+  public void expandedRecipesAlsoCountTheParentForFrequency() {
     var form = new PortionForm(Fixtures.day(), "Обед", null);
     form.choose(form.original.catalog.get("ббр"));
     var saved = VaultMarkdown.day(form.save().noteText(), catalog);
     var usage = new MealUsage();
-    usage.replaceDay(TODAY, saved.entries, TODAY);
+    usage.replaceDay(TODAY, new FoodOccurrences(catalog).find(saved.entries), TODAY);
     assertEquals(1, count(usage, "хлеб", "Обед"));
     assertEquals(1, count(usage, "сыр", "Обед"));
-    assertEquals(0, count(usage, "бутерброд", "Обед"));
+    assertEquals(1, count(usage, "бутерброд", "Обед"));
   }
 
   private static final class Storage implements VaultStorage {

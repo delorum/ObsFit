@@ -207,7 +207,7 @@ public class FoodHistoryTest {
   }
 
   @Test
-  public void compositeHistoryMatchesExplicitRecipesButDoesNotInventProvenanceFromLeaves()
+  public void compositeHistoryDoesNotDuplicateExplicitRecipesFromLeavesInTheSameMeal()
       throws Exception {
     var storage = new Storage();
     storage.add(START, "бутерброд 60 г 140 ккал\nхлеб 40 г 80 ккал\nсыр 20 г 60 ккал");
