@@ -24,12 +24,16 @@ public class NestedRecipeTest {
   }
 
   @Test
-  public void selectionFlattensNestedDishAndMergesRepeatedLeaves() {
+  public void selectionKeepsNestedBranchesAndDoesNotMergeAcrossDishes() {
     var catalog = VaultMarkdown.catalog(NESTED);
     var items = RecipeIngredients.add(catalog, List.of(), "тр", 20, null);
     items = RecipeIngredients.add(catalog, items, "тарелка", 10, null);
     items = RecipeIngredients.add(catalog, items, "хл", 10, null);
-    assertEquals("хлеб 32.5 г<br>сыр 7.5 г", RecipeIngredients.toMarkdown(items));
+    assertEquals(3, items.size());
+    assertEquals("тарелка", items.get(0).name());
+    assertEquals(
+        "хлеб 32.5 г<br>сыр 7.5 г",
+        RecipeIngredients.toMarkdown(RecipeIngredients.flatten(catalog, items)));
     assertEquals(items, RecipeIngredients.parse(catalog, RecipeIngredients.toMarkdown(items)));
     assertEquals(218.75, RecipeIngredients.nutrition(catalog, items).kcal100(), .000001);
     String saved =
@@ -40,7 +44,13 @@ public class NestedRecipeTest {
                 "новый набор", List.of(), RecipeIngredients.toMarkdown(items), 0, 0),
             Fixtures.REPLACEMENTS);
     assertEquals(
-        "хлеб 32.5 г<br>сыр 7.5 г", VaultMarkdown.catalog(saved).get("новый набор").ingredients);
+        "хлеб 32.5 г<br>сыр 7.5 г",
+        RecipeIngredients.toMarkdown(
+            RecipeIngredients.flatten(
+                VaultMarkdown.catalog(saved),
+                RecipeIngredients.parse(
+                    VaultMarkdown.catalog(saved),
+                    VaultMarkdown.catalog(saved).get("новый набор").ingredients))));
   }
 
   @Test
@@ -90,7 +100,7 @@ public class NestedRecipeTest {
             new VaultMarkdown.Food("сэндвич", List.of(), "хл 40 г<br>сыр 20 г", 0, 0),
             Fixtures.REPLACEMENTS);
     var updated = VaultMarkdown.catalog(renamed);
-    assertEquals("сэндвич 30 г<br>хл 10 г", updated.get("тр").ingredients);
+    assertEquals("сэндвич 30 г<br>хлеб 10 г", updated.get("тр").ingredients);
     assertEquals(240, updated.get("набор").kcal100, .000001);
     assertThrows(
         IllegalArgumentException.class, () -> VaultMarkdown.deleteFood(updated, "сэндвич"));
@@ -105,7 +115,7 @@ public class NestedRecipeTest {
   }
 
   @Test
-  public void legacyCatalogDraftRemainsReadableAndNewPortionDraftIsFlattened() {
+  public void legacyCatalogAndPortionDraftsRestoreNestedComposition() {
     var snapshot = Fixtures.day(Fixtures.DAY, NESTED);
     var portion = new PortionForm(snapshot, "Обед", null);
     portion.startNew();
@@ -113,14 +123,36 @@ public class NestedRecipeTest {
     portion.composition.add(snapshot.catalog.get("набор"), 50);
     portion.recalculateRecipe();
     var restored = PortionForm.restore(snapshot, portion.draft());
-    assertEquals("хлеб 30 г<br>сыр 20 г", restored.save().newFood().ingredients);
+    assertTrue(restored.save().newFood().ingredients.startsWith("набор:"));
+    assertEquals(
+        "хлеб 30 г<br>сыр 20 г",
+        RecipeIngredients.toMarkdown(
+            RecipeIngredients.flatten(snapshot.catalog, restored.composition.ingredients)));
     assertEquals(120, restored.total(), 0);
-    assertTrue(restored.save().noteText().contains("хлеб 30 г 60 ккал"));
-    assertTrue(restored.save().noteText().contains("сыр 20 г 60 ккал"));
+    var diary = VaultMarkdown.day(restored.save().noteText(), snapshot.catalog);
+    assertEquals(4, diary.recipes.size());
+    assertEquals(
+        30,
+        diary.section("Обед").stream()
+            .filter(e -> e.name.equals("хлеб"))
+            .mapToDouble(e -> e.weight)
+            .sum(),
+        0);
+    assertEquals(
+        20,
+        diary.section("Обед").stream()
+            .filter(e -> e.name.equals("сыр"))
+            .mapToDouble(e -> e.weight)
+            .sum(),
+        0);
     var source = new VaultRepository.CatalogSnapshot(NESTED, Fixtures.REPLACEMENTS);
     var form = new CatalogForm(source, source.catalog.get("тарелка"));
     var recovered = CatalogForm.restore(source, form.draft());
-    assertEquals("бутерброд 30 г<br>хлеб 10 г", recovered.input().ingredients);
+    assertTrue(recovered.input().ingredients.startsWith("бутерброд:"));
+    assertEquals(
+        "хлеб 30 г<br>сыр 10 г",
+        RecipeIngredients.toMarkdown(
+            RecipeIngredients.flatten(source.catalog, recovered.ingredients)));
     assertEquals(225, VaultMarkdown.catalog(recovered.save()).get("тарелка").kcal100, .000001);
   }
 }

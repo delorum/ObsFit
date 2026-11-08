@@ -200,9 +200,10 @@ public final class AppController {
     if (target.ingredient()) {
       var form = ingredientForm(target);
       if (index >= 0) {
-        if (index >= form.ingredients.size())
-          throw new IllegalStateException("Ингредиент больше не найден");
-        return Numbers.plain(form.ingredients.get(index).grams());
+        var item = form.item(index);
+        if (!item.children().isEmpty())
+          throw new IllegalStateException("Вес вложенного блюда рассчитывается по ингредиентам");
+        return Numbers.plain(item.grams());
       }
       if (name == null
           || form.original.catalog.get(name) == null
@@ -213,6 +214,8 @@ public final class AppController {
           form.original.catalog.get(name),
           form.food == null ? null : form.food.name))
         throw new IllegalStateException("Продукт не может входить в собственный состав");
+      if (!form.original.catalog.get(name).ingredients.isEmpty())
+        throw new IllegalStateException("Вес вложенного блюда рассчитывается по ингредиентам");
       return Numbers.plain(form.original.catalog.get(name).weight);
     }
     if (target.source() == AppState.Screen.PORTION) {

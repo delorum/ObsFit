@@ -97,14 +97,18 @@ public class PortionRecipeTest {
   }
 
   @Test
-  public void choosingAnExistingDishExpandsItsIngredients() {
+  public void choosingAnExistingDishKeepsItsNestedIngredients() {
     var form = new PortionForm(Fixtures.day(), "Обед", null);
     form.startNew();
     form.name = "половина бутера";
     form.composition.add(form.original.catalog.get("ббр"), 30);
     form.composition.add(form.original.catalog.get("хл"), 10);
     form.recalculateRecipe();
-    assertEquals("хлеб 30 г<br>сыр 10 г", form.save().newFood().ingredients);
+    assertTrue(form.save().newFood().ingredients.startsWith("бутерброд:"));
+    assertEquals(
+        "хлеб 30 г<br>сыр 10 г",
+        RecipeIngredients.toMarkdown(
+            RecipeIngredients.flatten(form.original.catalog, form.composition.ingredients)));
     assertEquals("40", form.defaultWeight);
     assertEquals(90, form.total(), 0);
   }

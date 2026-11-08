@@ -11,6 +11,36 @@ public final class RecipeMigration {
 
   private record Change(int first, int end, String text, int ingredients, double distance) {}
 
+  private static List<String> historical(
+      VaultMarkdown.Catalog catalog, List<RecipeIngredients.Item> items, double total) {
+    double energy =
+        RecipeIngredients.nutrition(catalog, items).kcal100()
+            * items.stream().mapToDouble(RecipeIngredients.Item::grams).sum();
+    double weight = items.stream().mapToDouble(RecipeIngredients.Item::grams).sum(),
+        remaining = total;
+    List<String> result = new ArrayList<>();
+    for (int i = 0; i < items.size(); i++) {
+      var item = items.get(i);
+      double itemEnergy =
+          RecipeIngredients.nutrition(catalog, List.of(item)).kcal100() * item.grams();
+      double share = energy > 0 ? itemEnergy / energy : item.grams() / weight;
+      double kcal =
+          i == items.size() - 1 ? remaining : Math.min(remaining, Math.round(total * share));
+      remaining -= kcal;
+      result.add(
+          item.children().isEmpty()
+              ? item.name()
+                  + " "
+                  + Numbers.plain(item.grams())
+                  + " г "
+                  + VaultMarkdown.fmt(kcal)
+                  + " ккал"
+              : RecipeBlocks.wrap(
+                  item.name(), String.join("\n", historical(catalog, item.children(), kcal))));
+    }
+    return result;
+  }
+
   public static String mark(LocalDate date, String source, VaultMarkdown.Catalog catalog) {
     if (date.isBefore(START)) return source;
     var day = VaultMarkdown.day(source, catalog);
@@ -26,34 +56,9 @@ public final class RecipeMigration {
       if (!entry.food.ingredients.isEmpty()) {
         var items =
             RecipeIngredients.portionItems(
-                catalog,
-                List.of(new RecipeIngredients.Item(entry.food.name, entry.food.weight)),
-                entry.weight);
-        double energy =
-            items.stream()
-                .mapToDouble(item -> catalog.get(item.name()).kcal100 * item.grams())
-                .sum();
-        double remaining = entry.recordedKcal == null ? entry.kcal : entry.recordedKcal;
-        double total = remaining;
-        List<String> children = new ArrayList<>();
-        double weightSum = items.stream().mapToDouble(RecipeIngredients.Item::grams).sum();
-        for (int i = 0; i < items.size(); i++) {
-          var item = items.get(i);
-          double share =
-              energy > 0
-                  ? catalog.get(item.name()).kcal100 * item.grams() / energy
-                  : item.grams() / weightSum;
-          double kcal =
-              i == items.size() - 1 ? remaining : Math.min(remaining, Math.round(total * share));
-          remaining -= kcal;
-          children.add(
-              item.name()
-                  + " "
-                  + Numbers.plain(item.grams())
-                  + " г "
-                  + VaultMarkdown.fmt(kcal)
-                  + " ккал");
-        }
+                catalog, RecipeIngredients.parse(catalog, entry.food.ingredients), entry.weight);
+        double total = entry.recordedKcal == null ? entry.kcal : entry.recordedKcal;
+        List<String> children = historical(catalog, items, total);
         String indent = entry.prefix.replaceFirst("(?:[-+*]|\\d+[.)])\\s+$", "");
         String wrapped = RecipeBlocks.wrap(entry.food.name, String.join("\n", children));
         wrapped =

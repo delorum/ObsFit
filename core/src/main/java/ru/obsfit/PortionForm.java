@@ -135,7 +135,7 @@ public final class PortionForm {
     composition.ingredients =
         RecipeIngredients.portionItems(
             original.catalog,
-            List.of(new RecipeIngredients.Item(selectedFood.name, selectedFood.weight)),
+            RecipeIngredients.parse(original.catalog, selectedFood.ingredients),
             VaultMarkdown.number(weight));
     recalculateRecipe();
   }
@@ -217,7 +217,7 @@ public final class PortionForm {
                 title,
                 aliasLines(aliases),
                 RecipeIngredients.toMarkdown(
-                    RecipeIngredients.flatten(original.catalog, composition.ingredients)),
+                    RecipeIngredients.materialize(original.catalog, composition.ingredients)),
                 VaultMarkdown.number(kcal100),
                 VaultMarkdown.number(defaultWeight));
         catalog =
@@ -233,7 +233,7 @@ public final class PortionForm {
         line =
             RecipeIngredients.portion(
                     catalog,
-                    List.of(new RecipeIngredients.Item(food.name, food.weight)),
+                    RecipeIngredients.parse(catalog, food.ingredients),
                     VaultMarkdown.number(weight))
                 .text();
       } else {
@@ -312,8 +312,10 @@ public final class PortionForm {
     try {
       if (!form.selectedRecipe() || draft.ingredients() != null && !draft.ingredients().isBlank())
         form.composition.ingredients =
-            RecipeIngredients.parse(
-                snapshot.catalog, draft.ingredients() == null ? "" : draft.ingredients());
+            RecipeIngredients.materialize(
+                snapshot.catalog,
+                RecipeIngredients.parse(
+                    snapshot.catalog, draft.ingredients() == null ? "" : draft.ingredients()));
       else {
         try {
           form.composition.ingredients =

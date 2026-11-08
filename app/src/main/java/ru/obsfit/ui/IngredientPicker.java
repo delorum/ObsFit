@@ -73,7 +73,11 @@ final class IngredientPicker {
             option.setOnClickListener(
                 v -> {
                   dialog.dismiss();
-                  weight(food, -1);
+                  if (food.ingredients.isEmpty()) weight(food, -1);
+                  else {
+                    form.add(food, food.weight);
+                    changed.run();
+                  }
                 });
             list.addView(option);
           }
@@ -99,10 +103,16 @@ final class IngredientPicker {
 
   void weight(VaultMarkdown.Food selected, int index, String initialText) {
     if (state.busy) return;
+    if (selected == null && !form.item(index).children().isEmpty()) return;
+    if (selected != null && !selected.ingredients.isEmpty()) {
+      form.add(selected, selected.weight);
+      changed.run();
+      return;
+    }
     LinearLayout body = ui.column();
     body.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), ui.dp(8));
-    String name = selected == null ? form.ingredients.get(index).name() : selected.name;
-    double initial = selected == null ? form.ingredients.get(index).grams() : selected.weight;
+    String name = selected == null ? form.item(index).name() : selected.name;
+    double initial = selected == null ? form.item(index).grams() : selected.weight;
     var dialog =
         new MaterialAlertDialogBuilder(ui.activity)
             .setTitle(name)
@@ -127,7 +137,10 @@ final class IngredientPicker {
             });
     if (selected != null && !selected.ingredients.isEmpty())
       body.addView(
-          ui.text("Блюдо разложится на простые ингредиенты пропорционально весу.", 13, MUTED));
+          ui.text(
+              "Составное блюдо сохранится вложенным; веса ингредиентов масштабируются.",
+              13,
+              MUTED));
     dialog.setOnShowListener(
         d ->
             dialog

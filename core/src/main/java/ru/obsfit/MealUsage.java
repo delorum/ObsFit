@@ -10,7 +10,7 @@ import java.util.*;
  */
 public final class MealUsage {
   public static final int DAYS = 14;
-  private static final String VERSION = "meal-usage-v3";
+  private static final String VERSION = "meal-usage-v4";
   private final NavigableMap<LocalDate, Map<String, Map<String, Integer>>> days = new TreeMap<>();
   private LocalDate rebuilt;
 

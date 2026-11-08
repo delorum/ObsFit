@@ -36,15 +36,16 @@ public class RecipeExpansionTest {
   }
 
   @Test
-  public void nestedRecipeAndAliasesMergeRepeatedLeavesAtActualPortionWeight() {
+  public void nestedRecipePreservesBranchesAtActualPortionWeight() {
     var form = selected(NESTED, "нб", "50");
     var save = form.save();
     var meals = VaultMarkdown.day(save.noteText(), form.original.catalog).section("Обед");
-    assertEquals(2, meals.size());
-    assertEquals("хлеб", meals.get(0).name);
-    assertEquals(30, meals.get(0).weight, 0);
-    assertEquals("сыр", meals.get(1).name);
-    assertEquals(20, meals.get(1).weight, 0);
+    assertEquals(4, meals.size());
+    assertEquals(
+        30, meals.stream().filter(e -> e.name.equals("хлеб")).mapToDouble(e -> e.weight).sum(), 0);
+    assertEquals(
+        20, meals.stream().filter(e -> e.name.equals("сыр")).mapToDouble(e -> e.weight).sum(), 0);
+    assertEquals(3, VaultMarkdown.day(save.noteText(), form.original.catalog).recipes.size());
     assertEquals(120, meals.stream().mapToDouble(e -> e.kcal).sum(), 0);
     assertEquals(120, form.total(), 0);
     assertTrue(meals.stream().allMatch(e -> e.food.ingredients.isEmpty()));
@@ -52,17 +53,20 @@ public class RecipeExpansionTest {
   }
 
   @Test
-  public void catalogPickerExpandsNestedRecipeAndMergesExistingPrimitive() {
+  public void catalogPickerPreservesNestedRecipeBesideExistingPrimitive() {
     var source = new VaultRepository.CatalogSnapshot(NESTED, Fixtures.REPLACEMENTS);
     var form = new CatalogForm(source, null);
     form.name = "новое блюдо";
     form.add(source.catalog.get("хл"), 10);
     form.add(source.catalog.get("нб"), 50);
-    assertEquals("хлеб 40 г<br>сыр 20 г", form.input().ingredients);
+    assertTrue(form.input().ingredients.contains("набор:<br>&nbsp;&nbsp;- тарелка:"));
+    assertEquals(
+        "хлеб 40 г<br>сыр 20 г",
+        RecipeIngredients.toMarkdown(RecipeIngredients.flatten(source.catalog, form.ingredients)));
     var food = VaultMarkdown.catalog(form.save()).get("новое блюдо");
     assertEquals(60, food.weight, 0);
     assertEquals(233.3333333, food.kcal100, .000001);
-    assertEquals("хлеб 40 г<br>сыр 20 г", food.ingredients);
+    assertTrue(food.ingredients.contains("бутерброд:"));
   }
 
   @Test

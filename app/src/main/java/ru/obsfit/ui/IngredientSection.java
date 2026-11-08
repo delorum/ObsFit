@@ -94,20 +94,52 @@ final class IngredientSection {
     list.removeAllViews();
     if (form.ingredients.isEmpty())
       list.addView(ui.text("Добавьте продукты, чтобы собрать составное блюдо.", 14, MUTED));
-    for (int i = 0; i < form.ingredients.size(); i++) {
-      int index = i;
-      var item = form.ingredients.get(i);
+    java.util.Map<Integer, LinearLayout> parents = new java.util.HashMap<>();
+    parents.put(-1, list);
+    for (var node : form.nodes()) {
+      LinearLayout parent = parents.get(node.parent());
+      if (parent == null) continue;
+      int index = node.index();
+      var item = node.item();
+      boolean composite = !item.children().isEmpty();
+      String expansion = "ingredient:" + state.screen + ":" + index;
+      boolean open = state.expanded.contains(expansion);
       LinearLayout row = ui.row(), labels = ui.column();
-      labels.addView(ui.text(item.name(), 16, INK));
-      VaultMarkdown.Food food = form.original.catalog.get(item.name());
-      if (food != null)
-        labels.addView(ui.text(Math.round(food.kcal100 * item.grams() / 100) + " ккал", 12, MUTED));
+      labels.addView(
+          ui.text(
+              (composite ? (open ? "⌄ " : "› ") : "") + item.name() + (composite ? ":" : ""),
+              16,
+              INK));
+      labels.addView(
+          ui.text(
+              VaultMarkdown.fmt(
+                      RecipeIngredients.portion(
+                              form.original.catalog, java.util.List.of(item), item.grams())
+                          .calories())
+                  + " ккал",
+              12,
+              MUTED));
+      if (composite) {
+        labels.setContentDescription(
+            item.name() + (open ? ", свернуть" : ", раскрыть ингредиенты"));
+        labels.setOnClickListener(
+            v -> {
+              if (!state.expanded.add(expansion)) state.expanded.remove(expansion);
+              refresh();
+            });
+      }
       ui.weighted(row, labels);
-      var weightButton =
-          ui.button(VaultMarkdown.fmt(item.grams()) + " г", () -> picker.weight(null, index));
-      weightButton.setContentDescription("Изменить вес: " + item.name());
-      var weightParams = new LinearLayout.LayoutParams(-2, -2);
-      row.addView(weightButton, weightParams);
+      if (composite) {
+        var weight = ui.text(VaultMarkdown.fmt(item.grams()) + " г", 14, MUTED);
+        weight.setContentDescription(
+            "Вес по ингредиентам: " + item.name() + ", " + VaultMarkdown.fmt(item.grams()) + " г");
+        row.addView(weight);
+      } else {
+        var weightButton =
+            ui.button(VaultMarkdown.fmt(item.grams()) + " г", () -> picker.weight(null, index));
+        weightButton.setContentDescription("Изменить вес: " + item.name());
+        row.addView(weightButton, new LinearLayout.LayoutParams(-2, -2));
+      }
       if (allowStructureChanges)
         row.addView(
             ui.icon(
@@ -120,7 +152,13 @@ final class IngredientSection {
                   changed.run();
                 }),
             ui.actionLayout(44, 48));
-      list.addView(row);
+      parent.addView(row);
+      if (composite && open) {
+        LinearLayout nested = ui.column();
+        nested.setPadding(ui.dp(12), 0, 0, 0);
+        parent.addView(nested);
+        parents.put(index, nested);
+      }
     }
   }
 }

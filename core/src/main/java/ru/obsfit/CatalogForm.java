@@ -33,7 +33,10 @@ public final class CatalogForm {
     aliases = food == null ? "" : String.join("\n", food.aliases);
     weight = food == null ? "100" : VaultMarkdown.fmt(food.weight);
     kcal100 = food == null ? "" : VaultMarkdown.fmt(food.kcal100);
-    ingredients = RecipeIngredients.parse(original.catalog, food == null ? "" : food.ingredients);
+    ingredients =
+        RecipeIngredients.materialize(
+            original.catalog,
+            RecipeIngredients.parse(original.catalog, food == null ? "" : food.ingredients));
   }
 
   public boolean recipe() {
@@ -44,7 +47,7 @@ public final class CatalogForm {
     return new VaultMarkdown.Food(
         name,
         PortionForm.aliasLines(aliases),
-        RecipeIngredients.toMarkdown(ingredients),
+        RecipeIngredients.toMarkdown(RecipeIngredients.materialize(original.catalog, ingredients)),
         recipe() ? 0 : VaultMarkdown.number(kcal100),
         recipe() ? 0 : VaultMarkdown.number(weight));
   }
@@ -77,14 +80,74 @@ public final class CatalogForm {
     ingredientsExpanded = true;
   }
 
+  public record Node(int index, int parent, int depth, RecipeIngredients.Item item) {}
+
+  public List<Node> nodes() {
+    List<Node> result = new ArrayList<>();
+    int[] next = {ingredients.size()};
+    for (int i = 0; i < ingredients.size(); i++) {
+      result.add(new Node(i, -1, 0, ingredients.get(i)));
+      nodes(ingredients.get(i).children(), i, 1, next, result);
+    }
+    return result;
+  }
+
+  private static void nodes(
+      List<RecipeIngredients.Item> items, int parent, int depth, int[] next, List<Node> result) {
+    for (var item : items) {
+      int index = next[0]++;
+      result.add(new Node(index, parent, depth, item));
+      nodes(item.children(), index, depth + 1, next, result);
+    }
+  }
+
+  public RecipeIngredients.Item item(int index) {
+    return nodes().stream()
+        .filter(node -> node.index() == index)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("Ингредиент больше не найден"))
+        .item();
+  }
+
+  private static List<RecipeIngredients.Item> replace(
+      List<RecipeIngredients.Item> items,
+      RecipeIngredients.Item target,
+      RecipeIngredients.Item replacement) {
+    List<RecipeIngredients.Item> result = new ArrayList<>();
+    for (var item : items) {
+      if (item == target) {
+        if (replacement != null) result.add(replacement);
+      } else if (!item.children().isEmpty()) {
+        var children = replace(item.children(), target, replacement);
+        if (!children.isEmpty())
+          result.add(
+              new RecipeIngredients.Item(
+                  item.name(),
+                  children.stream().mapToDouble(RecipeIngredients.Item::grams).sum(),
+                  children));
+      } else result.add(item);
+    }
+    return result;
+  }
+
   public void changeWeight(int index, double grams) {
-    var item = ingredients.get(index);
-    ingredients.set(index, new RecipeIngredients.Item(item.name(), RecipeIngredients.grams(grams)));
+    var item = item(index);
+    if (!item.children().isEmpty())
+      throw new IllegalStateException("Вес вложенного блюда изменяется через ингредиенты");
+    double amount = RecipeIngredients.grams(grams);
+    ingredients =
+        replace(
+            ingredients,
+            item,
+            new RecipeIngredients.Item(
+                item.name(),
+                amount,
+                RecipeIngredients.scale(item.children(), amount / item.grams())));
     dirty = true;
   }
 
   public void remove(int index) {
-    ingredients.remove(index);
+    ingredients = replace(ingredients, item(index), null);
     dirty = true;
   }
 
@@ -102,7 +165,7 @@ public final class CatalogForm {
         aliases,
         weight,
         kcal100,
-        RecipeIngredients.toMarkdown(ingredients),
+        RecipeIngredients.toMarkdown(RecipeIngredients.materialize(original.catalog, ingredients)),
         ingredientsExpanded,
         dirty);
   }
@@ -120,7 +183,9 @@ public final class CatalogForm {
     form.aliases = draft.aliases();
     form.weight = draft.weight();
     form.kcal100 = draft.kcal100();
-    form.ingredients = RecipeIngredients.parse(source.catalog, draft.ingredients());
+    form.ingredients =
+        RecipeIngredients.materialize(
+            source.catalog, RecipeIngredients.parse(source.catalog, draft.ingredients()));
     form.ingredientsExpanded = draft.expanded();
     form.dirty = draft.dirty();
     return form;

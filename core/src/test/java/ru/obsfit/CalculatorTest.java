@@ -212,14 +212,15 @@ public class CalculatorTest {
   public void pendingIngredientCanBeCalculatedBeforeItIsAdded() {
     var c = portion("хл");
     c.newFood();
-    c.calculator(PORTION_INGREDIENT, -1, "бутерброд", "60", 90);
+    c.calculator(PORTION_INGREDIENT, -1, "хлеб", "60", 90);
     assertTrue(c.state.portion.composition.ingredients.isEmpty());
     apply(c, "60/2");
     assertTrue(c.state.portion.composition.ingredients.isEmpty());
     confirmIngredient(c);
-    assertEquals(2, c.state.portion.composition.ingredients.size());
+    assertEquals(1, c.state.portion.composition.ingredients.size());
+    assertTrue(c.state.portion.composition.ingredients.get(0).children().isEmpty());
     assertEquals("30", c.state.portion.weight);
-    assertEquals(70, c.state.portion.total(), 0);
+    assertEquals(60, c.state.portion.total(), 0);
   }
 
   @Test

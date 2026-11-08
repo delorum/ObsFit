@@ -80,10 +80,13 @@ public final class FormTest {
     assertEquals("30", form.weight);
     assertEquals(70, preview.portionCalories(), 0);
     assertEquals(Fixtures.FOOD, form.original.foodText);
-    form.changeWeight(0, 40);
+    form.changeWeight(1, 40);
     assertEquals(110, form.preview().portionCalories(), 0);
-    assertEquals("хлеб 40 г<br>сыр 10 г", form.input().ingredients);
-    form.remove(1);
+    assertEquals(
+        "хлеб 40 г<br>сыр 10 г",
+        RecipeIngredients.toMarkdown(
+            RecipeIngredients.flatten(form.original.catalog, form.ingredients)));
+    form.remove(2);
     form.remove(0);
     assertFalse(form.recipe());
   }

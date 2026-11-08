@@ -173,14 +173,24 @@ public final class VaultMarkdown {
     if (!food.ingredients.isEmpty()) {
       visiting.add(food);
       List<RecipeIngredients.Item> items = RecipeIngredients.parse(catalog, food.ingredients);
-      for (RecipeIngredients.Item item : items)
-        calculateRecipe(catalog, catalog.get(item.name()), calculated, visiting);
+      calculateDependencies(catalog, items, calculated, visiting);
       RecipeIngredients.Nutrition nutrition = RecipeIngredients.nutrition(catalog, items);
       food.weight = nutrition.weight();
       food.kcal100 = nutrition.kcal100();
       visiting.remove(visiting.size() - 1);
     }
     calculated.add(food);
+  }
+
+  private static void calculateDependencies(
+      Catalog catalog,
+      List<RecipeIngredients.Item> items,
+      Set<Food> calculated,
+      List<Food> visiting) {
+    for (var item : items) {
+      calculateRecipe(catalog, catalog.get(item.name()), calculated, visiting);
+      calculateDependencies(catalog, item.children(), calculated, visiting);
+    }
   }
 
   public static Set<String> replacementNames(String content) {
@@ -270,18 +280,9 @@ public final class VaultMarkdown {
 
   private static String ingredientReferences(
       Catalog catalog, Food target, String ingredients, String newName) {
-    List<String> values = new ArrayList<>();
-    Pattern pattern =
-        Pattern.compile(
-            "^(.+?)\\s+(" + NUM + ")\\s*г$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    for (String ingredient : br(ingredients)) {
-      Matcher m = pattern.matcher(ingredient);
-      values.add(
-          m.matches() && catalog.get(m.group(1)) == target
-              ? newName + " " + m.group(2) + " г"
-              : ingredient);
-    }
-    return String.join("<br>", values);
+    return RecipeIngredients.toMarkdown(
+        RecipeIngredients.rename(
+            RecipeIngredients.parse(catalog, ingredients), target.name, newName));
   }
 
   /**
@@ -344,16 +345,9 @@ public final class VaultMarkdown {
     List<String> dependents = new ArrayList<>();
     for (Food item : catalog.foods)
       if (item != target && !item.ingredients.isEmpty()) {
-        Pattern ingredient =
-            Pattern.compile(
-                "^(.+?)\\s+(" + NUM + ")\\s*г$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-        for (String part : br(item.ingredients)) {
-          Matcher m = ingredient.matcher(part);
-          if (m.matches() && catalog.get(m.group(1)) == target) {
-            dependents.add(item.name);
-            break;
-          }
-        }
+        if (RecipeIngredients.contains(
+            RecipeIngredients.parse(catalog, item.ingredients), target.name))
+          dependents.add(item.name);
       }
     if (!dependents.isEmpty())
       throw new IllegalArgumentException(

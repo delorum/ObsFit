@@ -81,7 +81,8 @@ public final class RecipeBlocks {
   public static String wrap(String name, String ingredients) {
     List<String> lines = new ArrayList<>();
     lines.add(name + ":");
-    for (String line : ingredients.split("\\R")) lines.add("  - " + line);
+    for (String line : ingredients.split("\\R"))
+      lines.add((Character.isWhitespace(line.charAt(0)) ? "  " : "  - ") + line);
     return String.join("\n", lines);
   }
 
