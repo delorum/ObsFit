@@ -37,7 +37,6 @@ public class QuickAddPortionTest {
     var original = controller.state.portion.original;
     var quick = controller.quickPortion(original.catalog.get("ббр"));
     var save = quick.save();
-    assertEquals("бутерброд", save.recentName());
     var storage = new Fixtures.MemoryStorage();
     var backups = new Fixtures.MemoryBackups();
     var repo = new VaultRepository(storage, backups);

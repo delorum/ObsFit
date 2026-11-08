@@ -29,6 +29,7 @@ public final class AppState {
   public PortionForm portion;
   public CatalogForm catalogForm;
   public SportsPlan sportsPlan;
+  public MealUsage mealUsage = new MealUsage();
   public CalculatorForm calculator;
   public FoodHistory.Form foodHistory;
   public PortionForm.Draft returnPortion;

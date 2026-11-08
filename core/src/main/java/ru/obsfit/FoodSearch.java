@@ -10,7 +10,7 @@ public final class FoodSearch {
 
   private static final int NONE = Integer.MAX_VALUE;
 
-  private record Match(VaultMarkdown.Food food, int score, long recent) {}
+  private record Match(VaultMarkdown.Food food, int score, long priority) {}
 
   static String normalize(String text) {
     return Normalizer.normalize(text, Normalizer.Form.NFKC)
@@ -21,17 +21,17 @@ public final class FoodSearch {
   }
 
   public static List<VaultMarkdown.Food> find(
-      List<VaultMarkdown.Food> foods, String query, ToLongFunction<VaultMarkdown.Food> recent) {
+      List<VaultMarkdown.Food> foods, String query, ToLongFunction<VaultMarkdown.Food> priority) {
     String needle = normalize(query);
     List<Match> matches = new ArrayList<>();
     for (VaultMarkdown.Food food : foods) {
       int best = NONE;
       for (String name : food.names()) best = Math.min(best, score(needle, normalize(name)));
-      if (best != NONE) matches.add(new Match(food, best, recent.applyAsLong(food)));
+      if (best != NONE) matches.add(new Match(food, best, priority.applyAsLong(food)));
     }
     matches.sort(
         Comparator.comparingInt(Match::score)
-            .thenComparing(Comparator.comparingLong(Match::recent).reversed())
+            .thenComparing(Comparator.comparingLong(Match::priority).reversed())
             .thenComparing(m -> VaultMarkdown.key(m.food.name)));
     List<VaultMarkdown.Food> result = new ArrayList<>();
     for (Match match : matches) result.add(match.food);

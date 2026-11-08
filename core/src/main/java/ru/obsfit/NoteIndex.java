@@ -143,8 +143,19 @@ public final class NoteIndex {
     return List.copyOf(seek(through, true, count));
   }
 
+  /** All dates in a bounded interval, without descending into older or future directories. */
+  public List<VaultRepository.Note> between(LocalDate from, LocalDate through) throws IOException {
+    if (from.isAfter(through)) throw new IllegalArgumentException("Пустой диапазон дат");
+    return List.copyOf(seek(through, true, Integer.MAX_VALUE, new Range(from, through)));
+  }
+
   private List<VaultRepository.Note> seek(LocalDate around, boolean before, int count)
       throws IOException {
+    return seek(around, before, count, new Range(LocalDate.MIN, LocalDate.MAX));
+  }
+
+  private List<VaultRepository.Note> seek(
+      LocalDate around, boolean before, int count, Range interval) throws IOException {
     Comparator<LocalDate> order = before ? Comparator.reverseOrder() : Comparator.naturalOrder();
     Comparator<Node> ordering = Comparator.comparing(n -> bound(n, around, before), order);
     PriorityQueue<Node> pending =
@@ -154,6 +165,7 @@ public final class NoteIndex {
     List<VaultRepository.Note> result = new ArrayList<>();
     while (!pending.isEmpty()) {
       Node node = pending.remove();
+      if (node.range.intersect(interval) == null) continue;
       if (before ? node.range.start.isAfter(around) : !node.range.end.isAfter(around)) continue;
       if (result.size() >= count
           && order.compare(bound(node, around, before), result.get(count - 1).date) > 0) break;

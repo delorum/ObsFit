@@ -23,7 +23,7 @@ final class IngredientSection {
       AppState state,
       CatalogForm form,
       Runnable changed,
-      ToLongFunction<VaultMarkdown.Food> recent,
+      ToLongFunction<VaultMarkdown.Food> priority,
       boolean allowStructureChanges,
       CalculatorActions calculator) {
     this.allowStructureChanges = allowStructureChanges;
@@ -40,7 +40,7 @@ final class IngredientSection {
               refresh();
               changed.run();
             },
-            recent,
+            priority,
             calculator);
   }
 

@@ -154,6 +154,17 @@ public final class VaultRepository {
     return new FoodHistory.Search(storage, catalog, food);
   }
 
+  /** Read-only full rebuild of the rolling window; publish only after all reads succeed. */
+  public MealUsage rebuildMealUsage(LocalDate today, VaultMarkdown.Catalog catalog)
+      throws IOException {
+    MealUsage usage = new MealUsage();
+    for (var note : new NoteIndex(storage).between(today.minusDays(MealUsage.DAYS - 1), today))
+      usage.replaceDay(
+          note.date, VaultMarkdown.day(storage.read(note.path), catalog).entries, today);
+    usage.markRebuilt(today);
+    return usage;
+  }
+
   public SportsPlan loadSportsPlan() throws IOException {
     return new SportsPlan(storage.read(SportsPlan.PATH));
   }

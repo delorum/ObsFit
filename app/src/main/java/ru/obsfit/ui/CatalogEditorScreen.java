@@ -22,12 +22,12 @@ public final class CatalogEditorScreen {
   private boolean refreshing;
 
   public CatalogEditorScreen(
-      Ui ui, AppState state, Actions actions, ToLongFunction<VaultMarkdown.Food> recent) {
+      Ui ui, AppState state, Actions actions, ToLongFunction<VaultMarkdown.Food> priority) {
     this.ui = ui;
     this.state = state;
     form = state.catalogForm;
     this.actions = actions;
-    composition = new IngredientSection(ui, state, form, this::preview, recent, true, actions);
+    composition = new IngredientSection(ui, state, form, this::preview, priority, true, actions);
   }
 
   public void render() {

@@ -15,7 +15,7 @@ final class IngredientPicker {
   private final AppState state;
   private final CatalogForm form;
   private final Runnable changed;
-  private final ToLongFunction<VaultMarkdown.Food> recent;
+  private final ToLongFunction<VaultMarkdown.Food> priority;
   private final CalculatorActions calculator;
 
   IngredientPicker(
@@ -23,14 +23,14 @@ final class IngredientPicker {
       AppState state,
       CatalogForm form,
       Runnable changed,
-      ToLongFunction<VaultMarkdown.Food> recent,
+      ToLongFunction<VaultMarkdown.Food> priority,
       CalculatorActions calculator) {
     this.calculator = calculator;
     this.ui = ui;
     this.state = state;
     this.form = form;
     this.changed = changed;
-    this.recent = recent;
+    this.priority = priority;
   }
 
   void choose() {
@@ -56,7 +56,7 @@ final class IngredientPicker {
     Runnable fill =
         () -> {
           list.removeAllViews();
-          var matches = FoodSearch.find(available, search.getText().toString(), recent);
+          var matches = FoodSearch.find(available, search.getText().toString(), priority);
           int shown = 0;
           for (var food : matches) {
             if (shown++ >= 100) break;

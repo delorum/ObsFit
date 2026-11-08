@@ -10,19 +10,19 @@ public final class ScreenRenderer {
   private final AppController controller;
   private final AppState state;
   private final ScreenHost actions;
-  private final ToLongFunction<VaultMarkdown.Food> recent;
+  private final ToLongFunction<VaultMarkdown.Food> priority;
   private FoodHistoryScreen historyScreen;
 
   public ScreenRenderer(
       Ui ui,
       AppController controller,
       ScreenHost actions,
-      ToLongFunction<VaultMarkdown.Food> recent) {
+      ToLongFunction<VaultMarkdown.Food> priority) {
     this.ui = ui;
     this.controller = controller;
     state = controller.state;
     this.actions = actions;
-    this.recent = recent;
+    this.priority = priority;
   }
 
   public void render() {
@@ -91,12 +91,13 @@ public final class ScreenRenderer {
       }
       case CALCULATOR -> new CalculatorScreen(ui, state.calculator, actions).render();
       case DAY -> new DayScreen(ui, controller, actions).render();
-      case PORTION -> new PortionScreen(ui, state, actions, recent).render();
+      case PORTION -> new PortionScreen(ui, state, actions, priority).render();
       case CATALOG -> {
         if (state.catalog != null) new CatalogScreen(ui, state, actions).render();
       }
       case CATALOG_EDITOR -> {
-        if (state.catalogForm != null) new CatalogEditorScreen(ui, state, actions, recent).render();
+        if (state.catalogForm != null)
+          new CatalogEditorScreen(ui, state, actions, priority).render();
       }
       case SETTINGS -> SettingsScreen.render(ui, actions);
     }

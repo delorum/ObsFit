@@ -292,13 +292,43 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     Toast.makeText(this, message, Toast.LENGTH_LONG).show();
   }
 
-  private long recent(VaultMarkdown.Food food) {
-    return prefs.getLong("recent:" + VaultMarkdown.key(food.name), 0);
+  private long frequency(VaultMarkdown.Food food) {
+    String section =
+        state.portion != null
+            ? state.portion.section
+            : state.returnPortion != null ? state.returnPortion.section() : "Заметки";
+    return state.mealUsage.frequency(food, section, LocalDate.now());
+  }
+
+  private void persistMealUsage() {
+    prefs
+        .edit()
+        .putString("mealUsage:v1", state.mealUsage.encode(LocalDate.now()))
+        .putString("mealUsageVault", vaultUri())
+        .apply();
+  }
+
+  private void updateMealUsage(VaultRepository.Snapshot day) {
+    if (day == null) return;
+    state.mealUsage.replaceDay(day.note.date, day.day.entries, LocalDate.now());
+    persistMealUsage();
+  }
+
+  private void restoreMealUsage(String vault) {
+    state.mealUsage =
+        MealUsage.decode(
+            vault.equals(prefs.getString("mealUsageVault", null))
+                ? prefs.getString("mealUsage:v1", null)
+                : null,
+            LocalDate.now());
+    var editor = prefs.edit();
+    for (String key : prefs.getAll().keySet()) if (key.startsWith("recent:")) editor.remove(key);
+    editor.apply();
   }
 
   @Override
   public void redraw() {
-    renderer = new ScreenRenderer(ui, controller, this, this::recent);
+    renderer = new ScreenRenderer(ui, controller, this, this::frequency);
     renderer.render();
     watchDay();
   }
@@ -408,6 +438,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
           repo = data.repo();
           state.sportsPlan = null;
           if (save) prefs.edit().putString("vault", uri.toString()).apply();
+          restoreMealUsage(uri.toString());
+          updateMealUsage(data.day());
           controller.restore(saved, data.notes(), data.day(), data.catalog());
           if (state.screen == AppState.Screen.SETTINGS) refreshSportsPlan();
           restoring = null;
@@ -420,7 +452,24 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         true);
   }
 
-  private record Loaded(List<VaultRepository.Note> notes, VaultRepository.Snapshot day) {}
+  private record Loaded(
+      List<VaultRepository.Note> notes, VaultRepository.Snapshot day, MealUsage usage) {
+    Loaded(List<VaultRepository.Note> notes, VaultRepository.Snapshot day) {
+      this(notes, day, null);
+    }
+  }
+
+  private Loaded loaded(
+      List<VaultRepository.Note> notes, VaultRepository.Snapshot day, boolean rebuild)
+      throws java.io.IOException {
+    return new Loaded(
+        notes,
+        day,
+        rebuild
+            ? repo.rebuildMealUsage(
+                LocalDate.now(), day == null ? repo.loadCatalog().catalog : day.catalog)
+            : null);
+  }
 
   private void reload(boolean rescan) {
     if (repo == null || state.busy) return;
@@ -431,23 +480,25 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     task(
         () -> {
           var notes = repo.notes(selected, false);
-          if (notes.isEmpty()) return new Loaded(notes, null);
+          if (notes.isEmpty()) return loaded(notes, null, rescan);
           LocalDate date =
               notes.stream().anyMatch(n -> n.date.equals(selected))
                   ? selected
                   : AppController.nearest(notes, selected);
           var note = notes.stream().filter(n -> n.date.equals(date)).findFirst().orElseThrow();
+          VaultRepository.Snapshot day;
           try {
-            return new Loaded(notes, repo.load(note));
+            day = repo.load(note);
           } catch (java.io.FileNotFoundException missing) {
             // Only a deleted selected note requires resolving a replacement before display.
             notes = repo.refreshNotes(selected);
-            if (notes.isEmpty()) return new Loaded(notes, null);
+            if (notes.isEmpty()) return loaded(notes, null, rescan);
             LocalDate replacement = AppController.nearest(notes, selected);
             var replacementNote =
                 notes.stream().filter(n -> n.date.equals(replacement)).findFirst().orElseThrow();
-            return new Loaded(notes, repo.load(replacementNote));
+            day = repo.load(replacementNote);
           }
+          return loaded(notes, day, rescan);
         },
         data -> applyDay(data, rescan),
         rescan);
@@ -468,6 +519,11 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         && old != null
         && data.day() != null
         && old.note.path.equals(data.day().note.path)) state.scrollY = ui.scroll.getScrollY();
+    if (data.usage() != null) {
+      state.mealUsage = data.usage();
+      persistMealUsage();
+    }
+    updateMealUsage(data.day());
     state.notes = data.notes();
     controller.day(data.day());
     if (changed) redraw();
@@ -567,12 +623,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
             return repo.load(form.original.note);
           },
           day -> {
-            if (form.entry == null && !form.manual)
-              prefs
-                  .edit()
-                  .putLong(
-                      "recent:" + VaultMarkdown.key(save.recentName()), System.currentTimeMillis())
-                  .apply();
+            updateMealUsage(day);
             state.expanded.add(form.section);
             controller.day(day);
             redraw();
@@ -727,19 +778,31 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
           return repo.load(original.note);
         },
         day -> {
+          updateMealUsage(day);
           controller.day(day);
           redraw();
         });
   }
+
+  private record CatalogLoaded(VaultRepository.CatalogSnapshot catalog, MealUsage usage) {}
 
   @Override
   public void openCatalog() {
     boolean manualRefresh = state.screen == AppState.Screen.CATALOG;
     if (repo == null || state.busy) return;
     task(
-        () -> repo.loadCatalog(),
-        catalog -> {
-          controller.catalog(catalog);
+        () -> {
+          var catalog = repo.loadCatalog();
+          return new CatalogLoaded(
+              catalog,
+              manualRefresh ? repo.rebuildMealUsage(LocalDate.now(), catalog.catalog) : null);
+        },
+        data -> {
+          if (data.usage() != null) {
+            state.mealUsage = data.usage();
+            persistMealUsage();
+          }
+          controller.catalog(data.catalog());
           redraw();
         },
         manualRefresh);
@@ -806,7 +869,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     if (state.busy || state.catalogForm == null) return;
     CatalogForm form = state.catalogForm;
     try {
-      String updated = form.save(), name = form.name;
+      String updated = form.save();
       hideKeyboard();
       task(
           () -> {
@@ -814,13 +877,6 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
             return repo.loadCatalog();
           },
           catalog -> {
-            if (form.food != null
-                && !VaultMarkdown.key(form.food.name).equals(VaultMarkdown.key(name)))
-              prefs
-                  .edit()
-                  .putLong("recent:" + VaultMarkdown.key(name), recent(form.food))
-                  .remove("recent:" + VaultMarkdown.key(form.food.name))
-                  .apply();
             state.catalog = catalog;
             finishCatalogEditor();
           });

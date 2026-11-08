@@ -21,12 +21,11 @@ public class RecipeExpansionTest {
   }
 
   @Test
-  public void selectedRecipeAddsSeparateLeafRowsAndKeepsRecipeRecency() {
+  public void selectedRecipeAddsSeparateLeafRows() {
     var form = selected(Fixtures.FOOD, "ббр", "30");
     var save = form.save();
     var day = VaultMarkdown.day(save.noteText(), form.original.catalog);
     assertNull(save.newFood());
-    assertEquals("бутерброд", save.recentName());
     assertEquals(2, day.section("Обед").size());
     assertTrue(save.noteText().contains("хлеб 20 г 40 ккал"));
     assertTrue(save.noteText().contains("сыр 10 г 30 ккал"));

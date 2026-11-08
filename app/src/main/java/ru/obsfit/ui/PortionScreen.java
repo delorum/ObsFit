@@ -40,7 +40,7 @@ public final class PortionScreen {
   private final AppState state;
   private final PortionForm form;
   private final Actions actions;
-  private final ToLongFunction<VaultMarkdown.Food> recent;
+  private final ToLongFunction<VaultMarkdown.Food> priority;
   private EditText defaultWeightField, kcalField, portionWeightField;
   private boolean refreshing;
   private IngredientSection ingredientSection;
@@ -63,12 +63,12 @@ public final class PortionScreen {
   }
 
   public PortionScreen(
-      Ui ui, AppState state, Actions actions, ToLongFunction<VaultMarkdown.Food> recent) {
+      Ui ui, AppState state, Actions actions, ToLongFunction<VaultMarkdown.Food> priority) {
     this.ui = ui;
     this.state = state;
     form = state.portion;
     this.actions = actions;
-    this.recent = recent;
+    this.priority = priority;
   }
 
   public void render() {
@@ -108,7 +108,7 @@ public final class PortionScreen {
     Runnable fill =
         () -> {
           list.removeAllViews();
-          var foods = FoodSearch.find(form.original.catalog.foods, form.query, recent);
+          var foods = FoodSearch.find(form.original.catalog.foods, form.query, priority);
           int shown = 0;
           for (var food : foods) {
             if (shown++ >= 100) break;
@@ -141,7 +141,9 @@ public final class PortionScreen {
               foods.size() > 100
                   ? "Показаны первые 100 из " + foods.size() + ". Уточните поиск."
                   : form.query.isBlank()
-                      ? "Недавно добавленные — в начале списка"
+                      ? (state.mealUsage.rebuilt()
+                          ? "Чаще в этот приём за 14 дней — выше"
+                          : "↻ рассчитает частоту за 14 дней")
                       : "Сначала точные совпадения, затем похожие";
           caption.setText(
               text + " · ⊞ — состав" + (form.entry == null ? " · Свайп — добавить" : ""));
@@ -299,7 +301,7 @@ public final class PortionScreen {
                 updateRecipeFields();
                 update.run();
               },
-              recent,
+              priority,
               form.newFood,
               actions);
       ingredientSection.render(ui.body);

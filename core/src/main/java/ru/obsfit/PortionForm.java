@@ -42,7 +42,7 @@ public final class PortionForm {
       boolean portionWeightEdited)
       implements Serializable {}
 
-  public record Save(String noteText, VaultMarkdown.Food newFood, String recentName) {}
+  public record Save(String noteText, VaultMarkdown.Food newFood) {}
 
   public PortionForm(VaultRepository.Snapshot original, String section, VaultMarkdown.Entry entry) {
     this.original = original;
@@ -249,7 +249,7 @@ public final class PortionForm {
             ? VaultMarkdown.addAll(
                 original.day.source, section, Arrays.asList(line.split("\n", -1)), catalog)
             : VaultMarkdown.edit(original.day.source, entry, line, catalog);
-    return new Save(updated, added, title);
+    return new Save(updated, added);
   }
 
   public Draft draft() {
