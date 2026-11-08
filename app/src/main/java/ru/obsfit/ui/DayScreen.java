@@ -196,7 +196,7 @@ public final class DayScreen {
     LinearLayout wrapper = ui.column();
     LinearLayout heading = ui.row();
     heading.setMinimumHeight(ui.dp(48));
-    ui.weighted(heading, ui.bold((expanded ? "⌄ " : "› ") + group.name(), 16, INK));
+    ui.weighted(heading, ui.text((expanded ? "⌄ " : "› ") + group.name(), 16, INK));
     heading.addView(ui.text(VaultMarkdown.fmt(group.calories()) + " ккал", 14, ACCENT));
     heading.setContentDescription(
         group.name()
