@@ -28,6 +28,9 @@ public final class CalculatorScreen {
     expression.setTextColor(INK);
     result.setTextColor(GREEN);
     TextView message = ui.text("", 13, MUTED);
+    // Reserve one line even for valid expressions, so the keypad never moves while typing.
+    message.setSingleLine(true);
+    message.setEllipsize(android.text.TextUtils.TruncateAt.END);
     ui.body.addView(message);
     var apply = ui.button("Использовать результат", actions::applyCalculator);
     apply.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
@@ -41,7 +44,9 @@ public final class CalculatorScreen {
           String error = form.applicationError();
           apply.setEnabled(error == null);
           message.setText(error == null ? "" : error);
-          message.setVisibility(error == null ? android.view.View.GONE : android.view.View.VISIBLE);
+          message.setContentDescription(error);
+          message.setVisibility(
+              error == null ? android.view.View.INVISIBLE : android.view.View.VISIBLE);
         };
     String[][] keys = {
       {"(", ")", "C", "⌫"},
