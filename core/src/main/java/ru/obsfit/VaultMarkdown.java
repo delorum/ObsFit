@@ -374,6 +374,7 @@ public final class VaultMarkdown {
     public final String raw, name, section, prefix, suffix;
     public final Double weight;
     public final double kcal;
+    public final Double recordedKcal;
     public final Food food;
 
     Entry(
@@ -385,6 +386,7 @@ public final class VaultMarkdown {
         String suffix,
         Double weight,
         double kcal,
+        Double recordedKcal,
         Food food) {
       this.line = line;
       this.raw = raw;
@@ -394,6 +396,7 @@ public final class VaultMarkdown {
       this.suffix = suffix;
       this.weight = weight;
       this.kcal = kcal;
+      this.recordedKcal = recordedKcal;
       this.food = food;
     }
 
@@ -525,12 +528,14 @@ public final class VaultMarkdown {
       String body = p.group(2), name = null;
       Double grams = null;
       double kcal = 0;
+      Double recordedKcal = null;
       Food food = null;
       Matcher r = READY.matcher(body);
       if (r.matches()) {
         name = r.group(1);
         grams = number(r.group(2));
         kcal = number(r.group(3));
+        recordedKcal = kcal;
         food = catalog.get(name);
         if (food != null) {
           name = food.name;
@@ -560,7 +565,9 @@ public final class VaultMarkdown {
         }
       }
       if (name != null)
-        entries.add(new Entry(i, raw, name, section, p.group(1), p.group(3), grams, kcal, food));
+        entries.add(
+            new Entry(
+                i, raw, name, section, p.group(1), p.group(3), grams, kcal, recordedKcal, food));
     }
     return new Day(source, entries);
   }

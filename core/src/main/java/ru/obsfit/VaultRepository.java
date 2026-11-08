@@ -150,6 +150,10 @@ public final class VaultRepository {
     return loaded;
   }
 
+  public FoodHistory.Search foodHistory(VaultMarkdown.Catalog catalog, VaultMarkdown.Food food) {
+    return new FoodHistory.Search(storage, catalog, food);
+  }
+
   public SportsPlan loadSportsPlan() throws IOException {
     return new SportsPlan(storage.read(SportsPlan.PATH));
   }

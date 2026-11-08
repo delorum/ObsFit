@@ -10,7 +10,7 @@ import java.util.function.ToLongFunction;
 import ru.obsfit.*;
 
 public final class PortionScreen {
-  public interface Actions extends CalculatorActions {
+  public interface Actions extends CalculatorActions, FoodHistoryActions {
     void back();
 
     void redraw();
@@ -180,10 +180,15 @@ public final class PortionScreen {
           form.name = value;
           form.dirty = true;
         });
-    if (form.selectedFood != null)
+    if (form.selectedFood != null) {
+      var history = ui.button("История", actions::foodHistory);
+      history.setTextSize(12);
+      history.setPadding(ui.dp(8), 0, ui.dp(8), 0);
+      nameRow.addView(history, ui.actionLayout(80, 52));
       nameRow.addView(
           ui.icon("✎", "Редактировать продукт в справочнике", actions::editSelectedFood),
           ui.actionLayout(48, 52));
+    }
     ui.body.addView(nameRow);
     if (form.newFood) {
       LinearLayout aliases = ui.column();

@@ -12,7 +12,8 @@ public final class AppState {
     PORTION,
     CATALOG,
     CATALOG_EDITOR,
-    CALCULATOR
+    CALCULATOR,
+    FOOD_HISTORY
   }
 
   public enum ScanTarget {
@@ -29,6 +30,7 @@ public final class AppState {
   public CatalogForm catalogForm;
   public SportsPlan sportsPlan;
   public CalculatorForm calculator;
+  public FoodHistory.Form foodHistory;
   public PortionForm.Draft returnPortion;
   public final Set<String> expanded = new HashSet<>();
   public String catalogQuery = "", pendingBarcode, error;
@@ -47,7 +49,8 @@ public final class AppState {
       String pendingBarcode,
       ScanTarget scanTarget,
       int scrollY,
-      CalculatorForm.Draft calculator)
+      CalculatorForm.Draft calculator,
+      FoodHistory.Draft foodHistory)
       implements Serializable {}
 
   public Saved save() {
@@ -62,6 +65,7 @@ public final class AppState {
         pendingBarcode,
         scanTarget,
         scrollY,
-        calculator == null ? null : calculator.draft());
+        calculator == null ? null : calculator.draft(),
+        foodHistory == null ? null : foodHistory.draft());
   }
 }

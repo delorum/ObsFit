@@ -38,6 +38,7 @@ public final class AppController {
   public void day(VaultRepository.Snapshot day) {
     state.day = day;
     state.calculator = null;
+    state.foodHistory = null;
     if (day != null) state.selected = day.note.date;
     state.screen = AppState.Screen.DAY;
     state.portion = null;
@@ -144,6 +145,32 @@ public final class AppController {
       day(refreshed);
       state.error = error.getMessage();
     }
+  }
+
+  public void foodHistory(int scroll) {
+    VaultMarkdown.Catalog catalog;
+    VaultMarkdown.Food food;
+    if (state.screen == AppState.Screen.PORTION
+        && state.portion != null
+        && !state.portion.choosing) {
+      catalog = state.portion.original.catalog;
+      food = state.portion.selectedFood;
+    } else if (state.screen == AppState.Screen.CATALOG_EDITOR && state.catalogForm != null) {
+      catalog = state.catalogForm.original.catalog;
+      food = state.catalogForm.food;
+    } else throw new IllegalStateException("Откройте продукт из справочника");
+    if (food == null) throw new IllegalStateException("Сначала выберите сохранённый продукт");
+    food = catalog.get(food.name);
+    if (food == null) throw new IllegalStateException("Продукт больше не найден в справочнике");
+    state.foodHistory = new FoodHistory.Form(food, catalog, state.screen, scroll);
+    state.screen = AppState.Screen.FOOD_HISTORY;
+    state.error = null;
+  }
+
+  public void closeFoodHistory() {
+    if (state.foodHistory == null) throw new IllegalStateException("История закрыта");
+    state.screen = state.foodHistory.source;
+    state.foodHistory = null;
   }
 
   public void calculator(
@@ -308,6 +335,7 @@ public final class AppController {
     state.catalogForm = null;
     state.returnPortion = null;
     state.calculator = null;
+    state.foodHistory = null;
     if (saved == null) {
       state.selected = day == null ? LocalDate.now() : day.note.date;
       state.screen = AppState.Screen.DAY;
@@ -322,9 +350,11 @@ public final class AppController {
     state.scanTarget = saved.scanTarget();
     state.returnPortion = saved.returnPortion();
     var sourceScreen =
-        saved.screen() == AppState.Screen.CALCULATOR && saved.calculator() != null
-            ? saved.calculator().target().source()
-            : saved.screen();
+        saved.screen() == AppState.Screen.FOOD_HISTORY && saved.foodHistory() != null
+            ? saved.foodHistory().source()
+            : saved.screen() == AppState.Screen.CALCULATOR && saved.calculator() != null
+                ? saved.calculator().target().source()
+                : saved.screen();
     state.screen = sourceScreen;
     try {
       if (sourceScreen == AppState.Screen.CATALOG_EDITOR && saved.catalog() != null)
@@ -336,6 +366,15 @@ public final class AppController {
         state.portion = PortionForm.restore(day, saved.portion());
       } else if (state.screen == AppState.Screen.PORTION
           || state.screen == AppState.Screen.CATALOG_EDITOR) state.screen = AppState.Screen.DAY;
+      if (saved.screen() == AppState.Screen.FOOD_HISTORY) {
+        if (saved.foodHistory() == null)
+          throw new IllegalStateException("Не найден черновик истории");
+        var draft = saved.foodHistory();
+        foodHistory(draft.sourceScroll());
+        var food = state.foodHistory.catalog.get(draft.foodName());
+        if (food != state.foodHistory.food)
+          throw new IllegalStateException("Продукт истории изменился");
+      }
       if (saved.screen() == AppState.Screen.CALCULATOR) {
         if (saved.calculator() == null)
           throw new IllegalStateException("Не найден черновик калькулятора");
@@ -354,6 +393,7 @@ public final class AppController {
       state.catalogForm = null;
       state.returnPortion = null;
       state.pendingBarcode = null;
+      state.foodHistory = null;
     }
     if (day != null) state.selected = day.note.date;
     if (arrivedBarcode != null) {

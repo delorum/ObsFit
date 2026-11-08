@@ -8,7 +8,7 @@ import java.util.function.ToLongFunction;
 import ru.obsfit.*;
 
 public final class CatalogEditorScreen {
-  public interface Actions extends CalculatorActions {
+  public interface Actions extends CalculatorActions, FoodHistoryActions {
     void saveCatalog();
   }
 
@@ -31,7 +31,13 @@ public final class CatalogEditorScreen {
   }
 
   public void render() {
-    EditText name = ui.field(ui.body, "Название", form.name, false, true);
+    var nameRow = ui.row();
+    var nameBox = ui.column();
+    ui.weighted(nameRow, nameBox);
+    EditText name = ui.field(nameBox, "Название", form.name, false, true);
+    if (form.food != null)
+      nameRow.addView(ui.button("История", actions::foodHistory), ui.actionLayout(88, 52));
+    ui.body.addView(nameRow);
     EditText aliases = ui.field(ui.body, "Алиасы: по одному на строке", form.aliases, false, true);
     ui.multiline(aliases, 2);
     weight =

@@ -28,6 +28,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   private final Handler handler = new Handler(Looper.getMainLooper());
   private Ui ui;
   private UiDialogs dialogs;
+  private ScreenRenderer renderer;
+  private FoodHistory.Search historySearch;
   private SharedPreferences prefs;
   private VaultRepository repo;
   private SafVaultStorage storage;
@@ -227,6 +229,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
 
   @Override
   protected void onDestroy() {
+    if (historySearch != null) historySearch.cancel();
     handler.removeCallbacks(poll);
     handler.removeCallbacks(providerChanged);
     handler.removeCallbacks(mealClock);
@@ -295,7 +298,8 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
 
   @Override
   public void redraw() {
-    new ScreenRenderer(ui, controller, this, this::recent).render();
+    renderer = new ScreenRenderer(ui, controller, this, this::recent);
+    renderer.render();
     watchDay();
   }
 
@@ -409,6 +413,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
           restoring = null;
           attached = true;
           redraw();
+          if (state.screen == AppState.Screen.FOOD_HISTORY) startFoodHistory();
           prefetchNotes();
           consumeBarcode();
         },
@@ -923,6 +928,68 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   @Override
+  public void foodHistory() {
+    if (state.busy || repo == null) return;
+    controller.foodHistory(ui.scroll.getScrollY());
+    hideKeyboard();
+    redraw();
+    startFoodHistory();
+  }
+
+  private void startFoodHistory() {
+    if (historySearch != null) historySearch.cancel();
+    var form = state.foodHistory;
+    historySearch = repo.foodHistory(form.catalog, form.food);
+    moreFoodHistory();
+  }
+
+  @Override
+  public void moreFoodHistory() {
+    var form = state.foodHistory;
+    if (state.screen != AppState.Screen.FOOD_HISTORY
+        || form == null
+        || form.loading
+        || form.done
+        || historySearch == null) return;
+    var search = historySearch;
+    var source = repo;
+    form.loading = true;
+    form.error = null;
+    renderer.updateFoodHistory();
+    io.execute(
+        () -> {
+          try {
+            var page = search.nextPage();
+            runOnUiThread(
+                () -> {
+                  if (isDestroyed()
+                      || repo != source
+                      || state.foodHistory != form
+                      || state.screen != AppState.Screen.FOOD_HISTORY) return;
+                  form.hits.addAll(page.hits());
+                  form.done = page.done();
+                  form.loading = false;
+                  renderer.updateFoodHistory();
+                });
+          } catch (Exception failure) {
+            runOnUiThread(
+                () -> {
+                  if (isDestroyed()
+                      || repo != source
+                      || state.foodHistory != form
+                      || state.screen != AppState.Screen.FOOD_HISTORY) return;
+                  form.loading = false;
+                  form.error =
+                      failure.getMessage() == null
+                          ? "Не удалось загрузить историю"
+                          : failure.getMessage();
+                  renderer.updateFoodHistory();
+                });
+          }
+        });
+  }
+
+  @Override
   public void calculator(CalculatorForm.Target target) {
     if (state.busy) return;
     controller.calculator(target, -1, null, null, ui.scroll.getScrollY());
@@ -973,6 +1040,14 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
       return;
     }
     switch (state.screen) {
+      case FOOD_HISTORY -> {
+        int scroll = state.foodHistory.sourceScroll;
+        if (historySearch != null) historySearch.cancel();
+        historySearch = null;
+        controller.closeFoodHistory();
+        redraw();
+        ui.scrollTo(scroll);
+      }
       case CALCULATOR -> {
         int scroll = state.calculator.scrollY;
         controller.cancelCalculator();

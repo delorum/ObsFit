@@ -11,6 +11,7 @@ public final class ScreenRenderer {
   private final AppState state;
   private final ScreenHost actions;
   private final ToLongFunction<VaultMarkdown.Food> recent;
+  private FoodHistoryScreen historyScreen;
 
   public ScreenRenderer(
       Ui ui,
@@ -34,6 +35,10 @@ public final class ScreenRenderer {
             ? null
             : actions::back;
     switch (state.screen) {
+      case FOOD_HISTORY -> {
+        title = "История";
+        subtitle = state.foodHistory.food.name;
+      }
       case DAY -> {
         title = "ObsFit";
         subtitle = "Дневник питания";
@@ -72,8 +77,18 @@ public final class ScreenRenderer {
         subtitle = "ObsFit · локальное хранилище";
       }
     }
-    ui.page(title, subtitle, back, toolbar, state.refreshing);
+    ui.page(
+        title,
+        subtitle,
+        back,
+        toolbar,
+        state.refreshing
+            || state.screen == AppState.Screen.FOOD_HISTORY && state.foodHistory.loading);
     switch (state.screen) {
+      case FOOD_HISTORY -> {
+        historyScreen = new FoodHistoryScreen(ui, state.foodHistory, actions);
+        historyScreen.render();
+      }
       case CALCULATOR -> new CalculatorScreen(ui, state.calculator, actions).render();
       case DAY -> new DayScreen(ui, controller, actions).render();
       case PORTION -> new PortionScreen(ui, state, actions, recent).render();
@@ -86,5 +101,10 @@ public final class ScreenRenderer {
       case SETTINGS -> SettingsScreen.render(ui, actions);
     }
     ui.error(state.error);
+  }
+
+  public void updateFoodHistory() {
+    if (historyScreen != null && state.screen == AppState.Screen.FOOD_HISTORY)
+      historyScreen.update();
   }
 }

@@ -7,7 +7,8 @@ public interface ScreenHost
         CatalogScreen.Actions,
         CatalogEditorScreen.Actions,
         SettingsScreen.Actions,
-        CalculatorScreen.Actions {
+        CalculatorScreen.Actions,
+        FoodHistoryActions {
   void openCatalog();
 
   void refreshDay();

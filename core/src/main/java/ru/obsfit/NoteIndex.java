@@ -137,6 +137,12 @@ public final class NoteIndex {
         : (node.range.start.isAfter(around) ? node.range.start : around);
   }
 
+  /** Reverse chronological note-name page, independent of the visible day window. */
+  public List<VaultRepository.Note> before(LocalDate through, int count) throws IOException {
+    if (count < 1) throw new IllegalArgumentException("Размер порции должен быть положительным");
+    return List.copyOf(seek(through, true, count));
+  }
+
   private List<VaultRepository.Note> seek(LocalDate around, boolean before, int count)
       throws IOException {
     Comparator<LocalDate> order = before ? Comparator.reverseOrder() : Comparator.naturalOrder();
