@@ -679,6 +679,35 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   @Override
+  public void deleteRecipe(RecipeBlocks.Group group) {
+    if (state.busy || state.day == null) return;
+    var original = state.day;
+    dialogs.delete(
+        "Удалить блюдо целиком?",
+        group.name() + " со всеми ингредиентами",
+        () ->
+            mutate(
+                original, () -> RecipeBlocks.delete(original.day.source, group, original.catalog)));
+  }
+
+  @Override
+  public void moveRecipe(RecipeBlocks.Group group) {
+    if (state.busy || state.day == null) return;
+    var original = state.day;
+    List<String> targets = new ArrayList<>(VaultMarkdown.SECTIONS);
+    targets.remove(group.section());
+    dialogs.menu(
+        "Переместить блюдо в раздел",
+        targets.toArray(String[]::new),
+        index ->
+            mutate(
+                original,
+                () ->
+                    RecipeBlocks.move(
+                        original.day.source, group, targets.get(index), original.catalog)));
+  }
+
+  @Override
   public String workoutPreset(SportsDiary.Exercise exercise) {
     return state.sportsPlan == null ? "—" : state.sportsPlan.value(exercise);
   }

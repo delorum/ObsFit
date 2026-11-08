@@ -19,6 +19,10 @@ public final class DayScreen {
 
     void move(VaultMarkdown.Entry entry);
 
+    void deleteRecipe(RecipeBlocks.Group group);
+
+    void moveRecipe(RecipeBlocks.Group group);
+
     void entryMenu(VaultMarkdown.Entry entry);
 
     void navigate(int delta);
@@ -194,7 +198,7 @@ public final class DayScreen {
     String key = "recipe:" + state.day.note.path + ":" + group.line();
     boolean expanded = state.expanded.contains(key);
     LinearLayout wrapper = ui.column();
-    LinearLayout heading = ui.row();
+    Ui.ClickRow heading = ui.clickRow();
     heading.setMinimumHeight(ui.dp(48));
     ui.weighted(heading, ui.text((expanded ? "⌄ " : "› ") + group.name(), 16, INK));
     heading.addView(ui.text(VaultMarkdown.fmt(group.calories()) + " ккал", 14, ACCENT));
@@ -203,7 +207,9 @@ public final class DayScreen {
             + ", "
             + VaultMarkdown.fmt(group.calories())
             + " ккал, "
-            + (expanded ? "свернуть" : "раскрыть ингредиенты"));
+            + (expanded ? "свернуть" : "раскрыть ингредиенты")
+            + ". Смахните влево для удаления блюда целиком, вправо для переноса.");
+    Swipes.bind(ui, heading, () -> actions.deleteRecipe(group), () -> actions.moveRecipe(group));
     heading.setOnClickListener(
         v -> {
           state.scrollY = ui.scroll.getScrollY();
