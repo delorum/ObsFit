@@ -236,7 +236,7 @@ public final class DayScreen {
         ui.text(
             entry.weight == null ? "Без веса" : VaultMarkdown.fmt(entry.weight) + " г", 13, MUTED));
     ui.weighted(row, labels);
-    row.addView(ui.bold(VaultMarkdown.fmt(entry.kcal) + " ккал", 16, INK));
+    row.addView(ui.text(VaultMarkdown.fmt(entry.kcal) + " ккал", 16, INK));
     row.addView(
         ui.icon("⋮", "Действия с записью", () -> actions.entryMenu(entry)),
         ui.actionLayout(40, 48));
