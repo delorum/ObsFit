@@ -53,4 +53,35 @@ public final class PortionModesTest {
             .get(1)
             .section);
   }
+
+  @Test
+  public void editingExistingFoodHasNoModeSwitchesButWeightAndHistoryStayAvailable() {
+    var original = Fixtures.day();
+    var controller = new AppController();
+    controller.day(original);
+    controller.portion("Заметки", original.day.entries.get(0));
+    assertFalse(controller.state.portion.modeSwitchingAllowed());
+    assertFalse(controller.state.portion.choosing);
+    var food = controller.state.portion.selectedFood;
+    controller.state.portion.changePortionWeight("50");
+    var restored = PortionForm.restore(original, controller.state.portion.draft());
+    assertFalse(restored.modeSwitchingAllowed());
+    assertEquals(food.name, restored.selectedFood.name);
+    assertEquals(100, restored.total(), 0);
+    assertTrue(restored.save().noteText().contains("хлеб 50 г 100 ккал"));
+    controller.foodHistory(0);
+    assertSame(food, controller.state.foodHistory.food);
+  }
+
+  @Test
+  public void manualEntryEditingKeepsDescriptionAndCaloriesWithoutProductModeButtons() {
+    var original = Fixtures.day(Fixtures.DAY + "кафе 100 ккал\n", Fixtures.FOOD);
+    var form = new PortionForm(original, "Заметки", original.day.entries.get(1));
+    assertFalse(form.modeSwitchingAllowed());
+    assertTrue(form.manual);
+    form.manualKcal = "150";
+    assertTrue(form.save().noteText().contains("кафе 150 ккал"));
+    assertNull(form.save().newFood());
+    assertTrue(new PortionForm(original, "Обед", null).modeSwitchingAllowed());
+  }
 }

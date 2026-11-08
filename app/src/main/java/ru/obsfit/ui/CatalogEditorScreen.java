@@ -36,7 +36,8 @@ public final class CatalogEditorScreen {
     ui.weighted(nameRow, nameBox);
     EditText name = ui.field(nameBox, "Название", form.name, false, true);
     if (form.food != null)
-      nameRow.addView(ui.button("История", actions::foodHistory), ui.actionLayout(88, 52));
+      nameRow.addView(
+          ui.icon("◷", "История продукта", actions::foodHistory), ui.actionLayout(48, 52));
     ui.body.addView(nameRow);
     EditText aliases = ui.field(ui.body, "Алиасы: по одному на строке", form.aliases, false, true);
     ui.multiline(aliases, 2);

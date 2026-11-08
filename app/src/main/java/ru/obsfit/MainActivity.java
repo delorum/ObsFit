@@ -1010,22 +1010,32 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         || historySearch == null) return;
     var search = historySearch;
     var source = repo;
-    form.loading = true;
-    form.error = null;
+    form.beginPage();
     renderer.updateFoodHistory();
     io.execute(
         () -> {
           try {
-            var page = search.nextPage();
+            var page =
+                search.nextPage(
+                    hits ->
+                        runOnUiThread(
+                            () -> {
+                              if (isDestroyed()
+                                  || repo != source
+                                  || state.foodHistory != form
+                                  || state.screen != AppState.Screen.FOOD_HISTORY
+                                  || historySearch != search) return;
+                              form.progress(hits);
+                              renderer.updateFoodHistory();
+                            }));
             runOnUiThread(
                 () -> {
                   if (isDestroyed()
                       || repo != source
                       || state.foodHistory != form
-                      || state.screen != AppState.Screen.FOOD_HISTORY) return;
-                  form.hits.addAll(page.hits());
-                  form.done = page.done();
-                  form.loading = false;
+                      || state.screen != AppState.Screen.FOOD_HISTORY
+                      || historySearch != search) return;
+                  form.complete(page);
                   renderer.updateFoodHistory();
                 });
           } catch (Exception failure) {
@@ -1034,12 +1044,12 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
                   if (isDestroyed()
                       || repo != source
                       || state.foodHistory != form
-                      || state.screen != AppState.Screen.FOOD_HISTORY) return;
-                  form.loading = false;
-                  form.error =
+                      || state.screen != AppState.Screen.FOOD_HISTORY
+                      || historySearch != search) return;
+                  form.failed(
                       failure.getMessage() == null
                           ? "Не удалось загрузить историю"
-                          : failure.getMessage();
+                          : failure.getMessage());
                   renderer.updateFoodHistory();
                 });
           }

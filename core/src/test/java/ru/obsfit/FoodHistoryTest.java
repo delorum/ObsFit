@@ -9,7 +9,7 @@ import java.util.concurrent.CancellationException;
 import org.junit.Test;
 
 public class FoodHistoryTest {
-  private static final LocalDate START = LocalDate.of(2026, 1, 1);
+  private static final LocalDate START = LocalDate.of(2026, 11, 1);
 
   private static final class Storage implements VaultStorage {
     final Fixtures.MemoryStorage memory = new Fixtures.MemoryStorage();
@@ -187,11 +187,11 @@ public class FoodHistoryTest {
   @Test
   public void ordersAcrossCalendarAndIsoWeekYearsAndHandlesEmptyArchive() throws Exception {
     var storage = new Storage();
-    storage.add(LocalDate.of(2025, 12, 31), "хл 10 г 20 ккал");
-    storage.add(LocalDate.of(2026, 1, 1), "хл 20 г 40 ккал");
+    storage.add(LocalDate.of(2026, 12, 31), "хл 10 г 20 ккал");
+    storage.add(LocalDate.of(2027, 1, 1), "хл 20 г 40 ккал");
     var hits = search(storage, "хл").nextPage().hits();
-    assertEquals(LocalDate.of(2026, 1, 1), hits.get(0).date());
-    assertEquals(LocalDate.of(2025, 12, 31), hits.get(1).date());
+    assertEquals(LocalDate.of(2027, 1, 1), hits.get(0).date());
+    assertEquals(LocalDate.of(2026, 12, 31), hits.get(1).date());
     var empty = search(new Storage(), "хл").nextPage();
     assertTrue(empty.done());
     assertTrue(empty.hits().isEmpty());

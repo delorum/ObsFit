@@ -143,6 +143,14 @@ public final class NoteIndex {
     return List.copyOf(seek(through, true, count));
   }
 
+  /** A reverse-chronological page with a lower date boundary, pruned before listing folders. */
+  public List<VaultRepository.Note> before(LocalDate through, int count, LocalDate earliest)
+      throws IOException {
+    if (count < 1) throw new IllegalArgumentException("Размер порции должен быть положительным");
+    if (through.isBefore(earliest)) return List.of();
+    return List.copyOf(seek(through, true, count, new Range(earliest, through)));
+  }
+
   /** All dates in a bounded interval, without descending into older or future directories. */
   public List<VaultRepository.Note> between(LocalDate from, LocalDate through) throws IOException {
     if (from.isAfter(through)) throw new IllegalArgumentException("Пустой диапазон дат");

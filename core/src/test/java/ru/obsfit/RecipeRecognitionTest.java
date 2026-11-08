@@ -177,7 +177,7 @@ public class RecipeRecognitionTest {
     var storage = new Fixtures.MemoryStorage();
     storage.data.clear();
     for (int i = 0; i < 25; i++) {
-      var date = TODAY.minusDays(i);
+      var date = TODAY.plusDays(30).minusDays(i);
       storage.data.put(
           DiaryLayout.weekFolder(date) + "/" + date + "-день.md",
           "### Обед\nхл 40 г 80 ккал\nсыр 20 г 60 ккал\n"
@@ -187,7 +187,7 @@ public class RecipeRecognitionTest {
     var first = search.nextPage();
     assertEquals(20, first.hits().size());
     assertEquals(10, storage.reads);
-    assertEquals(TODAY, first.hits().get(0).date());
+    assertEquals(TODAY.plusDays(30), first.hits().get(0).date());
     assertEquals("Ужин", first.hits().get(0).section());
     assertEquals(30, first.hits().get(0).grams(), 0);
     assertEquals(70, first.hits().get(0).calories(), 1e-9);

@@ -76,8 +76,8 @@ public final class PortionScreen {
     ui.body.addView(
         ui.button(backToList ? "‹  Список продуктов" : "‹  Назад к дню", actions::back));
     ui.gap(ui.body, 12);
-    LinearLayout mode = ui.row();
-    if (form.entry == null) {
+    if (form.modeSwitchingAllowed()) {
+      LinearLayout mode = ui.row();
       ui.weighted(
           mode,
           ui.button(
@@ -89,12 +89,9 @@ public final class PortionScreen {
       if (form.manual && !form.choosing)
         ui.weighted(mode, ui.button("＋ Новая еда", actions::newFood));
       else ui.weighted(mode, ui.button("＋ ккал", actions::manualCalories));
-    } else {
-      ui.weighted(mode, ui.button("Из справочника", actions::chooseFromCatalog));
-      ui.weighted(mode, ui.button("＋ Новая еда", actions::newFood));
+      ui.body.addView(mode);
+      ui.gap(ui.body, 12);
     }
-    ui.body.addView(mode);
-    ui.gap(ui.body, 12);
     if (form.choosing) choices();
     else fields();
   }
@@ -183,10 +180,8 @@ public final class PortionScreen {
           form.dirty = true;
         });
     if (form.selectedFood != null) {
-      var history = ui.button("История", actions::foodHistory);
-      history.setTextSize(12);
-      history.setPadding(ui.dp(8), 0, ui.dp(8), 0);
-      nameRow.addView(history, ui.actionLayout(80, 52));
+      nameRow.addView(
+          ui.icon("◷", "История продукта", actions::foodHistory), ui.actionLayout(48, 52));
       nameRow.addView(
           ui.icon("✎", "Редактировать продукт в справочнике", actions::editSelectedFood),
           ui.actionLayout(48, 52));

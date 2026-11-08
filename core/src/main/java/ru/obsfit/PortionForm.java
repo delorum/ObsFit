@@ -122,6 +122,10 @@ public final class PortionForm {
     dirty = false;
   }
 
+  public boolean modeSwitchingAllowed() {
+    return entry == null;
+  }
+
   public boolean recipe() {
     return (newFood || selectedRecipe()) && composition.recipe();
   }

@@ -4,10 +4,12 @@ import java.io.*;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.CancellationException;
+import java.util.function.Consumer;
 
 /** Read-only matching history. Each request stops at 20 hits, including midway through a note. */
 public final class FoodHistory {
   public static final int PAGE_SIZE = 20;
+  public static final LocalDate FIRST_DATE = LocalDate.of(2026, 11, 1);
 
   private FoodHistory() {}
 
@@ -34,6 +36,35 @@ public final class FoodHistory {
     public boolean loading, done;
     public String error;
     public int scrollY;
+    private int pageStart = -1;
+
+    public void beginPage() {
+      if (pageStart < 0) pageStart = hits.size();
+      loading = true;
+      error = null;
+    }
+
+    /**
+     * Progress is a snapshot of the current page, including an already published prefix on retry.
+     */
+    public void progress(List<Hit> pageHits) {
+      if (pageStart < 0) throw new IllegalStateException("Загрузка страницы не начата");
+      int published = hits.size() - pageStart;
+      if (pageHits.size() < published) return;
+      hits.addAll(pageHits.subList(published, pageHits.size()));
+    }
+
+    public void complete(Page page) {
+      progress(page.hits());
+      done = page.done();
+      loading = false;
+      pageStart = -1;
+    }
+
+    public void failed(String message) {
+      loading = false;
+      error = message;
+    }
 
     public Form(
         VaultMarkdown.Food food,
@@ -84,14 +115,24 @@ public final class FoodHistory {
     }
 
     public Page nextPage() throws IOException {
+      return nextPage(ignored -> {});
+    }
+
+    /**
+     * Publish found rows after each note, without waiting for twenty hits or archive exhaustion.
+     */
+    public Page nextPage(Consumer<List<Hit>> progress) throws IOException {
+      checkCancelled();
+      if (!buffer.isEmpty()) progress.accept(List.copyOf(buffer));
       while (buffer.size() < PAGE_SIZE) {
         checkCancelled();
         if (!matches.isEmpty()) {
-          buffer.add(matches.removeFirst());
+          while (!matches.isEmpty() && buffer.size() < PAGE_SIZE) buffer.add(matches.removeFirst());
+          progress.accept(List.copyOf(buffer));
           continue;
         }
         if (notes.isEmpty() && !namesEnded) {
-          var batch = index.before(through, PAGE_SIZE);
+          var batch = index.before(through, PAGE_SIZE, FIRST_DATE);
           notes.addAll(batch);
           namesEnded = batch.size() < PAGE_SIZE;
           if (!batch.isEmpty()) through = batch.get(batch.size() - 1).date.minusDays(1);
