@@ -6,7 +6,8 @@ public interface ScreenHost
         PortionScreen.Actions,
         CatalogScreen.Actions,
         CatalogEditorScreen.Actions,
-        SettingsScreen.Actions {
+        SettingsScreen.Actions,
+        CalculatorScreen.Actions {
   void openCatalog();
 
   void refreshDay();

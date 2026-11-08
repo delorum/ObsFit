@@ -16,13 +16,16 @@ final class IngredientPicker {
   private final CatalogForm form;
   private final Runnable changed;
   private final ToLongFunction<VaultMarkdown.Food> recent;
+  private final CalculatorActions calculator;
 
   IngredientPicker(
       Ui ui,
       AppState state,
       CatalogForm form,
       Runnable changed,
-      ToLongFunction<VaultMarkdown.Food> recent) {
+      ToLongFunction<VaultMarkdown.Food> recent,
+      CalculatorActions calculator) {
+    this.calculator = calculator;
     this.ui = ui;
     this.state = state;
     this.form = form;
@@ -91,15 +94,15 @@ final class IngredientPicker {
   }
 
   void weight(VaultMarkdown.Food selected, int index) {
+    weight(selected, index, null);
+  }
+
+  void weight(VaultMarkdown.Food selected, int index, String initialText) {
     if (state.busy) return;
     LinearLayout body = ui.column();
     body.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), ui.dp(8));
     String name = selected == null ? form.ingredients.get(index).name() : selected.name;
     double initial = selected == null ? form.ingredients.get(index).grams() : selected.weight;
-    EditText weight = ui.field(body, "Вес, г", VaultMarkdown.fmt(initial), true, true);
-    if (selected != null && !selected.ingredients.isEmpty())
-      body.addView(
-          ui.text("Блюдо разложится на простые ингредиенты пропорционально весу.", 13, MUTED));
     var dialog =
         new MaterialAlertDialogBuilder(ui.activity)
             .setTitle(name)
@@ -107,6 +110,24 @@ final class IngredientPicker {
             .setNegativeButton("Отмена", null)
             .setPositiveButton(selected == null ? "Применить" : "Добавить", null)
             .create();
+    EditText weight =
+        ui.calculatedField(
+            body,
+            "Вес, г",
+            initialText == null ? Numbers.plain(initial) : initialText,
+            true,
+            value -> {
+              if (state.busy) return;
+              dialog.dismiss();
+              calculator.ingredientCalculator(
+                  state.screen == AppState.Screen.CATALOG_EDITOR,
+                  index,
+                  selected == null ? null : selected.name,
+                  value);
+            });
+    if (selected != null && !selected.ingredients.isEmpty())
+      body.addView(
+          ui.text("Блюдо разложится на простые ингредиенты пропорционально весу.", 13, MUTED));
     dialog.setOnShowListener(
         d ->
             dialog

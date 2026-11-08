@@ -923,6 +923,42 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   @Override
+  public void calculator(CalculatorForm.Target target) {
+    if (state.busy) return;
+    controller.calculator(target, -1, null, null, ui.scroll.getScrollY());
+    hideKeyboard();
+    redraw();
+  }
+
+  @Override
+  public void ingredientCalculator(boolean catalog, int index, String name, String initial) {
+    if (state.busy) return;
+    controller.calculator(
+        catalog
+            ? CalculatorForm.Target.CATALOG_INGREDIENT
+            : CalculatorForm.Target.PORTION_INGREDIENT,
+        index,
+        name,
+        initial,
+        ui.scroll.getScrollY());
+    hideKeyboard();
+    redraw();
+  }
+
+  @Override
+  public void applyCalculator() {
+    if (state.busy || state.calculator == null) return;
+    int scroll = state.calculator.scrollY;
+    try {
+      controller.applyCalculator();
+      redraw();
+      ui.scrollTo(scroll);
+    } catch (IllegalArgumentException | IllegalStateException failure) {
+      error(failure.getMessage());
+    }
+  }
+
+  @Override
   public void hideKeyboard() {
     View focus = getCurrentFocus();
     if (focus != null)
@@ -937,6 +973,12 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
       return;
     }
     switch (state.screen) {
+      case CALCULATOR -> {
+        int scroll = state.calculator.scrollY;
+        controller.cancelCalculator();
+        redraw();
+        ui.scrollTo(scroll);
+      }
       case CATALOG_EDITOR -> {
         if (state.catalogForm != null && state.catalogForm.dirty)
           discard(this::finishCatalogEditor);

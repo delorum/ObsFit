@@ -8,7 +8,7 @@ import java.util.function.ToLongFunction;
 import ru.obsfit.*;
 
 public final class CatalogEditorScreen {
-  public interface Actions {
+  public interface Actions extends CalculatorActions {
     void saveCatalog();
   }
 
@@ -27,15 +27,27 @@ public final class CatalogEditorScreen {
     this.state = state;
     form = state.catalogForm;
     this.actions = actions;
-    composition = new IngredientSection(ui, state, form, this::preview, recent);
+    composition = new IngredientSection(ui, state, form, this::preview, recent, true, actions);
   }
 
   public void render() {
     EditText name = ui.field(ui.body, "Название", form.name, false, true);
     EditText aliases = ui.field(ui.body, "Алиасы: по одному на строке", form.aliases, false, true);
     ui.multiline(aliases, 2);
-    weight = ui.field(ui.body, "Вес по умолчанию, г", form.weight, true, true);
-    kcal = ui.field(ui.body, "Калорийность на 100 г", form.kcal100, true, true);
+    weight =
+        ui.calculatedField(
+            ui.body,
+            "Вес по умолчанию, г",
+            form.weight,
+            !form.recipe(),
+            value -> actions.calculator(CalculatorForm.Target.CATALOG_WEIGHT));
+    kcal =
+        ui.calculatedField(
+            ui.body,
+            "Калорийность на 100 г",
+            form.kcal100,
+            !form.recipe(),
+            value -> actions.calculator(CalculatorForm.Target.CATALOG_KCAL100));
     composition.render(ui.body);
     calculation = ui.text("", 16, ACCENT);
     ui.body.addView(calculation);
@@ -89,8 +101,8 @@ public final class CatalogEditorScreen {
   private void preview() {
     CatalogForm.Preview result = form.preview();
     refreshing = true;
-    weight.setEnabled(!form.recipe());
-    kcal.setEnabled(!form.recipe());
+    ui.setFieldEnabled(weight, !form.recipe());
+    ui.setFieldEnabled(kcal, !form.recipe());
     if (!weight.getText().toString().equals(form.weight)) weight.setText(form.weight);
     if (!kcal.getText().toString().equals(form.kcal100)) kcal.setText(form.kcal100);
     refreshing = false;

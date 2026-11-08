@@ -23,17 +23,9 @@ final class IngredientSection {
       AppState state,
       CatalogForm form,
       Runnable changed,
-      ToLongFunction<VaultMarkdown.Food> recent) {
-    this(ui, state, form, changed, recent, true);
-  }
-
-  IngredientSection(
-      Ui ui,
-      AppState state,
-      CatalogForm form,
-      Runnable changed,
       ToLongFunction<VaultMarkdown.Food> recent,
-      boolean allowStructureChanges) {
+      boolean allowStructureChanges,
+      CalculatorActions calculator) {
     this.allowStructureChanges = allowStructureChanges;
     this.ui = ui;
     this.state = state;
@@ -48,7 +40,8 @@ final class IngredientSection {
               refresh();
               changed.run();
             },
-            recent);
+            recent,
+            calculator);
   }
 
   void render(LinearLayout parent) {
@@ -78,6 +71,16 @@ final class IngredientSection {
     parent.addView(ingredients);
     ui.gap(parent, 12);
     refresh();
+    var returned = state.calculator;
+    if (returned != null
+        && returned.target.ingredient()
+        && state.screen == returned.target.source()) {
+      state.calculator = null;
+      picker.weight(
+          returned.ingredientIndex >= 0 ? null : form.original.catalog.get(returned.ingredientName),
+          returned.ingredientIndex,
+          returned.expression);
+    }
   }
 
   void refresh() {

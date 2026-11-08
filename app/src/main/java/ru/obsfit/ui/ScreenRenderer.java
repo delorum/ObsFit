@@ -41,6 +41,10 @@ public final class ScreenRenderer {
         toolbar.add(new Ui.Action("↻", "Обновить данные из хранилища", actions::refreshDay));
         toolbar.add(new Ui.Action("⚙", "Настройки", actions::openSettings));
       }
+      case CALCULATOR -> {
+        title = "Калькулятор";
+        subtitle = "Вычислить и перенести в поле";
+      }
       case PORTION -> {
         title = state.portion.entry == null ? "Добавить еду" : "Редактировать";
         subtitle = state.portion.section + " · " + state.selected;
@@ -70,6 +74,7 @@ public final class ScreenRenderer {
     }
     ui.page(title, subtitle, back, toolbar, state.refreshing);
     switch (state.screen) {
+      case CALCULATOR -> new CalculatorScreen(ui, state.calculator, actions).render();
       case DAY -> new DayScreen(ui, controller, actions).render();
       case PORTION -> new PortionScreen(ui, state, actions, recent).render();
       case CATALOG -> {

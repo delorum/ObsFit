@@ -35,6 +35,8 @@ public final class Ui {
   public LinearLayout body;
   public ScrollView scroll;
   private ProgressBar progress;
+  private final java.util.Map<EditText, android.view.View> calculatorButtons =
+      new java.util.IdentityHashMap<>();
   private TextView error;
   private final java.util.List<Runnable> clockUpdates = new java.util.ArrayList<>();
   private Runnable navigationUpdate;
@@ -174,13 +176,16 @@ public final class Ui {
         });
     b.setIncludeFontPadding(false);
     b.setPadding(0, 0, 0, 0);
-    if (icon.equals("↻")) {
+    if (icon.equals("↻") || icon.equals("▦")) {
       b.setText("");
       b.setIcon(
           androidx.appcompat.content.res.AppCompatResources.getDrawable(
-              activity, ru.obsfit.R.drawable.ic_refresh));
+              activity,
+              icon.equals("↻")
+                  ? ru.obsfit.R.drawable.ic_refresh
+                  : ru.obsfit.R.drawable.ic_calculator));
       b.setIconTint(ColorStateList.valueOf(INK));
-      b.setIconSize(dp(32));
+      b.setIconSize(dp(icon.equals("↻") ? 32 : 26));
       b.setIconPadding(0);
       b.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
       b.setGravity(Gravity.CENTER);
@@ -206,6 +211,7 @@ public final class Ui {
   public void page(
       String title, String subtitle, Runnable back, List<Action> actions, boolean busy) {
     clockUpdates.clear();
+    calculatorButtons.clear();
     navigationUpdate = null;
     LinearLayout root = column();
     root.setBackgroundColor(BG);
@@ -259,8 +265,61 @@ public final class Ui {
     ViewCompat.requestApplyInsets(root);
   }
 
+  public EditText calculatedField(
+      LinearLayout parent,
+      String label,
+      String value,
+      boolean enabled,
+      Consumer<String> calculate) {
+    LinearLayout row = row(), box = column();
+    EditText edit = field(box, label, value, true, enabled, false);
+    weighted(row, box);
+    var button =
+        icon(
+            "▦",
+            "Калькулятор: " + label,
+            () -> {
+              if (edit.isEnabled()) calculate.accept(edit.getText().toString());
+            });
+    row.addView(button, actionLayout(48, 56));
+    calculatorButtons.put(edit, button);
+    edit.addOnAttachStateChangeListener(
+        new View.OnAttachStateChangeListener() {
+          @Override
+          public void onViewAttachedToWindow(View view) {
+            calculatorButtons.put(edit, button);
+            setFieldEnabled(edit, edit.isEnabled());
+          }
+
+          @Override
+          public void onViewDetachedFromWindow(View view) {
+            calculatorButtons.remove(edit);
+          }
+        });
+    setFieldEnabled(edit, enabled);
+    parent.addView(row);
+    gap(parent, 12);
+    return edit;
+  }
+
+  public void setFieldEnabled(EditText field, boolean enabled) {
+    field.setEnabled(enabled);
+    var button = calculatorButtons.get(field);
+    if (button != null) button.setVisibility(enabled ? View.VISIBLE : View.GONE);
+  }
+
   public EditText field(
       LinearLayout parent, String label, String value, boolean decimal, boolean enabled) {
+    return field(parent, label, value, decimal, enabled, true);
+  }
+
+  private EditText field(
+      LinearLayout parent,
+      String label,
+      String value,
+      boolean decimal,
+      boolean enabled,
+      boolean gapBelow) {
     TextInputLayout box = new TextInputLayout(activity);
     box.setHint(label);
     box.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
@@ -282,7 +341,7 @@ public final class Ui {
     edit.setEnabled(enabled);
     box.addView(edit, new LinearLayout.LayoutParams(-1, -2));
     parent.addView(box, new LinearLayout.LayoutParams(-1, -2));
-    gap(parent, 12);
+    if (gapBelow) gap(parent, 12);
     return edit;
   }
 

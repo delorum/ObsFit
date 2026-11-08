@@ -10,7 +10,7 @@ import java.util.function.ToLongFunction;
 import ru.obsfit.*;
 
 public final class PortionScreen {
-  public interface Actions {
+  public interface Actions extends CalculatorActions {
     void back();
 
     void redraw();
@@ -49,12 +49,12 @@ public final class PortionScreen {
     form.recalculateRecipe();
     refreshing = true;
     if (defaultWeightField != null) {
-      defaultWeightField.setEnabled(!form.recipe());
+      ui.setFieldEnabled(defaultWeightField, !form.recipe());
       if (!defaultWeightField.getText().toString().equals(form.defaultWeight))
         defaultWeightField.setText(form.defaultWeight);
     }
     if (kcalField != null) {
-      kcalField.setEnabled(!form.recipe() && (form.newFood || form.selectedFood == null));
+      ui.setFieldEnabled(kcalField, !form.recipe() && (form.newFood || form.selectedFood == null));
       if (!kcalField.getText().toString().equals(form.kcal100)) kcalField.setText(form.kcal100);
     }
     if (portionWeightField != null && !portionWeightField.getText().toString().equals(form.weight))
@@ -209,7 +209,12 @@ public final class PortionScreen {
     ui.gap(ui.body, 10);
     if (form.newFood) {
       defaultWeightField =
-          ui.field(ui.body, "Вес по умолчанию, г", form.defaultWeight, true, !form.recipe());
+          ui.calculatedField(
+              ui.body,
+              "Вес по умолчанию, г",
+              form.defaultWeight,
+              !form.recipe(),
+              value -> actions.calculator(CalculatorForm.Target.PORTION_DEFAULT_WEIGHT));
       ui.watch(
           defaultWeightField,
           value -> {
@@ -229,7 +234,13 @@ public final class PortionScreen {
           }
         };
     if (form.manual) {
-      EditText kcal = ui.field(ui.body, "Калории, ккал", form.manualKcal, true, true);
+      EditText kcal =
+          ui.calculatedField(
+              ui.body,
+              "Калории, ккал",
+              form.manualKcal,
+              true,
+              value -> actions.calculator(CalculatorForm.Target.PORTION_CALORIES));
       ui.watch(
           kcal,
           value -> {
@@ -238,14 +249,20 @@ public final class PortionScreen {
             update.run();
           });
     } else {
-      portionWeightField = ui.field(ui.body, "Вес порции, г", form.weight, true, true);
+      portionWeightField =
+          ui.calculatedField(
+              ui.body,
+              "Вес порции, г",
+              form.weight,
+              true,
+              value -> actions.calculator(CalculatorForm.Target.PORTION_WEIGHT));
       kcalField =
-          ui.field(
+          ui.calculatedField(
               ui.body,
               "Калорийность на 100 г",
               form.kcal100,
-              true,
-              !form.recipe() && (form.newFood || form.selectedFood == null));
+              !form.recipe() && (form.newFood || form.selectedFood == null),
+              value -> actions.calculator(CalculatorForm.Target.PORTION_KCAL100));
       ui.watch(
           portionWeightField,
           value -> {
@@ -278,7 +295,8 @@ public final class PortionScreen {
                 update.run();
               },
               recent,
-              form.newFood);
+              form.newFood,
+              actions);
       ingredientSection.render(ui.body);
       updateRecipeFields();
     }
