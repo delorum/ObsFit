@@ -122,7 +122,7 @@ public final class MealPlan {
 
   public record SectionBudget(double eaten, int remaining, boolean closed) {
     public String label() {
-      if (eaten == 0) return "≈" + Math.max(0, remaining) + " ккал";
+      if (eaten == 0 && !closed) return "≈" + Math.max(0, remaining) + " ккал";
       String difference =
           remaining < 0
               ? "сверх ≈" + -remaining
@@ -153,7 +153,7 @@ public final class MealPlan {
         Arrays.fill(before, i, before.length, 0);
         double available = limit - Arrays.stream(before).sum();
         int allowance = budgets(before, i, limit, available)[0];
-        balance = eaten == 0 ? 0 : (int) Math.round(allowance - allocation.consumed[i]);
+        balance = (int) Math.round(allowance - allocation.consumed[i]);
       } else {
         balance = allocation.budgets[i - allocation.first];
         if (allocation.consumed[i] > 0) {

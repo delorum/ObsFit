@@ -68,7 +68,7 @@ public class MealHeadersTest {
             .mapToInt(e -> e.getValue().remaining())
             .sum();
     assertEquals(2250, future);
-    assertEquals(0, at("11:00", day(2600)).get("Завтрак").remaining());
+    assertEquals(500, at("11:00", day(2600)).get("Завтрак").remaining());
     assertTrue(at("11:00", day(2600)).get("Перекус 1").remaining() > 225);
   }
 
@@ -141,5 +141,88 @@ public class MealHeadersTest {
         assertEquals(advice.available(), Math.max(0, budget.remaining()));
       }
     }
+  }
+
+  private static int openRemaining(Map<String, MealPlan.SectionBudget> budgets) {
+    return budgets.values().stream()
+        .filter(b -> !b.closed())
+        .mapToInt(MealPlan.SectionBudget::remaining)
+        .sum();
+  }
+
+  @Test
+  public void missedMealStartsShowingShortfallExactlyAtItsClosingTime() {
+    var d = day(2600);
+    assertEquals("≈500 ккал", at("09:59", d).get("Завтрак").label());
+    var closed = at("10:00", d).get("Завтрак");
+    assertTrue(closed.closed());
+    assertEquals(500, closed.remaining());
+    assertEquals("0 ккал\nнедобор ≈500", closed.label());
+    assertEquals(2600, openRemaining(at("11:00", d)));
+  }
+
+  @Test
+  public void everyMissedMealShowsItsPriorAllowanceIncludingCarryAndDayLimitScaling() {
+    for (double limit : List.of(1800d, 2150d, 2600d)) {
+      var d = day(limit);
+      for (var slot : MealPlan.SLOTS) {
+        var advice =
+            MealPlan.guidance(DATE, DATE.atTime(slot.start().plusMinutes(15)), List.of(), limit);
+        var closed = at(slot.end().toString(), d).get(slot.section());
+        assertTrue(closed.closed());
+        assertEquals(advice.available(), closed.remaining());
+        assertEquals("0 ккал\nнедобор ≈" + advice.available(), closed.label());
+      }
+    }
+  }
+
+  @Test
+  public void addingFoodToMissedBreakfastChargesLaterMealsExactlyOnce() {
+    var before = at("11:30", day(2600));
+    assertEquals(2600, openRemaining(before));
+    for (int calories : List.of(150, 350, 500, 650)) {
+      var after = at("11:30", day(2600, food("Завтрак", calories)));
+      assertEquals(500 - calories, after.get("Завтрак").remaining());
+      assertEquals(2600 - calories, openRemaining(after));
+      for (var entry : after.entrySet())
+        if (!entry.getValue().closed())
+          assertTrue(entry.getValue().remaining() <= before.get(entry.getKey()).remaining());
+      var expected =
+          MealPlan.guidance(DATE, DATE.atTime(11, 30), List.of(food("Завтрак", calories)), 2600);
+      assertEquals(expected.available(), after.get("Перекус 1").remaining());
+    }
+  }
+
+  @Test
+  public void backfillingAMissedSnackChangesLaterAllowanceButNotEarlierBreakfast() {
+    var before = at("13:30", day(2600));
+    var after = at("13:30", day(2600, food("Перекус 1", 225)));
+    assertEquals(before.get("Завтрак"), after.get("Завтрак"));
+    assertEquals(before.get("Перекус 1").remaining() - 225, after.get("Перекус 1").remaining());
+    assertEquals(openRemaining(before) - 225, openRemaining(after));
+    assertEquals(2375, openRemaining(after));
+    assertEquals(
+        MealPlan.guidance(DATE, DATE.atTime(13, 30), List.of(food("Перекус 1", 225)), 2600)
+            .available(),
+        after.get("Обед").remaining());
+  }
+
+  @Test
+  public void exhaustedDayDoesNotInventAMissedAllowanceOrMoreCaloriesForLaterMeals() {
+    var budgets = at("14:30", day(2600, food("Завтрак", 3000)));
+    assertEquals(0, budgets.get("Обед").remaining());
+    assertEquals("0 ккал\nпо плану", budgets.get("Обед").label());
+    assertEquals(0, openRemaining(budgets));
+  }
+
+  @Test
+  public void emptyHistoricMealsShowShortfallWhileFutureMealsRemainOpenBudgets() {
+    var now = DATE.atTime(13, 30);
+    var d = day(2150);
+    var historic = MealPlan.sectionBudgets(DATE.minusDays(1), now, d);
+    assertTrue(historic.values().stream().allMatch(b -> b.label().startsWith("0 ккал\nнедобор ≈")));
+    var future = MealPlan.sectionBudgets(DATE.plusDays(1), now, d);
+    assertTrue(future.values().stream().noneMatch(b -> b.label().contains("недобор")));
+    assertEquals(2150, openRemaining(future));
   }
 }
