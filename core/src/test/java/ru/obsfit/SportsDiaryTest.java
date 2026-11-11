@@ -55,6 +55,51 @@ public class SportsDiaryTest {
   }
 
   @Test
+  public void bikeQuickAddEstimatesCaloriesFromDefaultMinutes() {
+    String source = Fixtures.DAY;
+    var preset = new SportsPlan("ПланВелотренажер:: 20 мин\n").defaultApproach(bike);
+    String changed = SportsDiary.changeSet(source, bike, 0, preset);
+    assertEquals("20 мин 110 ккал", SportsDiary.read(changed, bike.key()));
+    assertEquals(changed, SportsDiary.write(source, bike.key(), "20 мин 110 ккал"));
+  }
+
+  @Test
+  public void bikeEditEstimatesOnlyWhenCaloriesAreBlank() {
+    String source = SportsDiary.write(Fixtures.DAY, bike.key(), "20 мин");
+    var form = new SportsDiary.Form(SportsDiary.parse(bike, "20 мин").get(0));
+    form.first = "12,5";
+    form.second = "   ";
+    String changed = SportsDiary.changeSet(source, bike, 0, form.value(bike));
+    assertEquals("12.5 мин 68.75 ккал", SportsDiary.read(changed, bike.key()));
+    form.second = "52";
+    changed = SportsDiary.changeSet(changed, bike, 0, form.value(bike));
+    assertEquals("12.5 мин 52 ккал", SportsDiary.read(changed, bike.key()));
+    form.second = "0";
+    changed = SportsDiary.changeSet(changed, bike, 0, form.value(bike));
+    assertEquals("12.5 мин 0 ккал", SportsDiary.read(changed, bike.key()));
+  }
+
+  @Test
+  public void bikeAddingAndDeletingDoNotBackfillOtherApproaches() {
+    String source = SportsDiary.write(Fixtures.DAY, bike.key(), "10 мин|20 мин 0 ккал");
+    String changed = SportsDiary.changeSet(source, bike, 2, new SportsDiary.Set(30, null));
+    assertEquals("10 мин|20 мин 0 ккал|30 мин 165 ккал", SportsDiary.read(changed, bike.key()));
+    assertEquals(source, SportsDiary.changeSet(changed, bike, 2, null));
+  }
+
+  @Test
+  public void bikeZeroMinutesEstimateZeroCaloriesAndInvalidInputIsRejected() {
+    String changed = SportsDiary.changeSet(Fixtures.DAY, bike, 0, new SportsDiary.Set(0, null));
+    assertEquals("0 мин 0 ккал", SportsDiary.read(changed, bike.key()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SportsDiary.changeSet(changed, bike, 0, new SportsDiary.Set(-1, null)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SportsDiary.changeSet(changed, bike, 0, new SportsDiary.Set(Double.NaN, null)));
+  }
+
+  @Test
   public void weightCreateEditClearAndCommaDecimal() {
     String source = SportsDiary.weight(Fixtures.DAY, "102,35");
     assertEquals("102.35", SportsDiary.read(source, "Вес"));

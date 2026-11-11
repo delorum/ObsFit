@@ -22,7 +22,7 @@ public final class SportsDiary {
 
   private SportsDiary() {}
 
-  /** First is reps or minutes; second is the other arm or explicitly reported bike kcal. */
+  /** First is reps or minutes; second is the other arm or bike kcal (reported or estimated). */
   public record Set(double first, Double second) {
     public String format(Exercise e) {
       String a = Numbers.plain(first);
@@ -202,6 +202,9 @@ public final class SportsDiary {
     if (replacement == null) sets.remove(index);
     else {
       Set validated = checked(e, replacement.first, replacement.second);
+      // Estimate only the saved approach; reading old notes and editing other sets stay lossless.
+      if (e.bike && validated.second == null)
+        validated = checked(e, validated.first, validated.first * (110d / 20));
       if (index == sets.size()) sets.add(validated);
       else sets.set(index, validated);
     }
