@@ -876,6 +876,19 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   @Override
+  public void mealToCatalog(String section) {
+    if (state.busy || state.day == null) return;
+    state.scrollY = ui.scroll.getScrollY();
+    task(
+        () -> repo.loadCatalog(),
+        catalog -> {
+          controller.mealToCatalog(catalog, section);
+          hideKeyboard();
+          redraw();
+        });
+  }
+
+  @Override
   public void editCatalog(VaultMarkdown.Food food) {
     if (state.busy) return;
     controller.editCatalog(state.catalog, food, false);
@@ -941,7 +954,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   private void finishCatalogEditor() {
-    if (state.returnPortion == null) {
+    if (state.returnPortion == null && !state.returnMeal) {
       controller.catalog(state.catalog);
       redraw();
       return;

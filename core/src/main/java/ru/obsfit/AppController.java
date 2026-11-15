@@ -45,6 +45,7 @@ public final class AppController {
     state.diaryRecipe = null;
     state.catalogForm = null;
     state.returnPortion = null;
+    state.returnMeal = false;
     state.pendingBarcode = null;
   }
 
@@ -133,11 +134,13 @@ public final class AppController {
     state.portion = null;
     state.diaryRecipe = null;
     state.returnPortion = null;
+    state.returnMeal = false;
     state.pendingBarcode = null;
   }
 
   public void editCatalog(
       VaultRepository.CatalogSnapshot source, VaultMarkdown.Food food, boolean fromPortion) {
+    state.returnMeal = false;
     state.returnPortion = fromPortion && state.portion != null ? state.portion.draft() : null;
     state.catalog = source;
     state.catalogForm = new CatalogForm(source, food);
@@ -147,10 +150,24 @@ public final class AppController {
     state.pendingBarcode = null;
   }
 
+  public void mealToCatalog(VaultRepository.CatalogSnapshot catalog, String section) {
+    if (state.day == null) throw new IllegalStateException("Откройте день");
+    var form = MealCatalog.create(state.day, catalog, section);
+    editCatalog(catalog, null, false);
+    state.catalogForm = form;
+    state.returnMeal = true;
+    state.error = null;
+  }
+
   public void returnFromCatalog(VaultRepository.Snapshot refreshed) {
+    if (state.returnMeal) {
+      day(refreshed);
+      return;
+    }
     PortionForm.Draft draft = state.returnPortion;
     state.catalogForm = null;
     state.returnPortion = null;
+    state.returnMeal = false;
     state.day = refreshed;
     if (draft == null) {
       state.screen = AppState.Screen.CATALOG;
@@ -388,6 +405,7 @@ public final class AppController {
     state.diaryRecipe = null;
     state.catalogForm = null;
     state.returnPortion = null;
+    state.returnMeal = false;
     state.calculator = null;
     state.foodHistory = null;
     if (saved == null) {
@@ -403,6 +421,7 @@ public final class AppController {
     state.pendingBarcode = saved.pendingBarcode();
     state.scanTarget = saved.scanTarget();
     state.returnPortion = saved.returnPortion();
+    state.returnMeal = saved.returnMeal();
     var sourceScreen =
         saved.screen() == AppState.Screen.FOOD_HISTORY && saved.foodHistory() != null
             ? saved.foodHistory().source()
@@ -444,13 +463,14 @@ public final class AppController {
     } catch (IllegalStateException error) {
       state.error = error.getMessage();
       state.screen =
-          sourceScreen == AppState.Screen.CATALOG_EDITOR
+          sourceScreen == AppState.Screen.CATALOG_EDITOR && !state.returnMeal
               ? AppState.Screen.CATALOG
               : AppState.Screen.DAY;
       state.portion = null;
       state.diaryRecipe = null;
       state.catalogForm = null;
       state.returnPortion = null;
+      state.returnMeal = false;
       state.pendingBarcode = null;
       state.foodHistory = null;
     }

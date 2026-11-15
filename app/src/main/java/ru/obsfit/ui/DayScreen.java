@@ -25,6 +25,8 @@ public final class DayScreen {
 
     void editRecipe(RecipeBlocks.Group group);
 
+    void mealToCatalog(String section);
+
     void reparent(RecipeBlocks.Piece piece, RecipeBlocks.Group target, RecipeBlocks.Piece after);
 
     void navigate(int delta);
@@ -177,6 +179,10 @@ public final class DayScreen {
     if (state.expanded.contains(name)) {
       if (entries.isEmpty()) card.addView(ui.text("Пока ничего", 14, MUTED));
       foodRows(card, entries, name, -1);
+      if (!name.equals("Заметки") && MealCatalog.count(state.day.day, name) > 1)
+        card.addView(
+            ui.button("Сохранить в справочник", () -> actions.mealToCatalog(name)),
+            new LinearLayout.LayoutParams(-1, ui.dp(48)));
     }
     ui.body.addView(card);
     ui.gap(ui.body, 10);

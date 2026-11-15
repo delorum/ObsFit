@@ -35,6 +35,7 @@ public final class AppState {
   public CalculatorForm calculator;
   public FoodHistory.Form foodHistory;
   public PortionForm.Draft returnPortion;
+  public boolean returnMeal;
   public final Set<String> expanded = new HashSet<>();
   public String catalogQuery = "", pendingBarcode, error;
   public ScanTarget scanTarget;
@@ -54,7 +55,8 @@ public final class AppState {
       int scrollY,
       CalculatorForm.Draft calculator,
       FoodHistory.Draft foodHistory,
-      DiaryRecipeForm.Draft diaryRecipe)
+      DiaryRecipeForm.Draft diaryRecipe,
+      boolean returnMeal)
       implements Serializable {}
 
   public Saved save() {
@@ -71,6 +73,7 @@ public final class AppState {
         scrollY,
         calculator == null ? null : calculator.draft(),
         foodHistory == null ? null : foodHistory.draft(),
-        diaryRecipe == null ? null : diaryRecipe.draft());
+        diaryRecipe == null ? null : diaryRecipe.draft(),
+        returnMeal);
   }
 }

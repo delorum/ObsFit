@@ -55,6 +55,35 @@ public final class CatalogEditorScreen {
             form.kcal100,
             !form.recipe(),
             value -> actions.calculator(CalculatorForm.Target.CATALOG_KCAL100));
+    for (String note : form.importNotes) ui.body.addView(ui.text(note, 13, MUTED));
+    if (!form.unresolved.isEmpty()) {
+      var unresolved = ui.column();
+      unresolved.addView(
+          ui.text(
+              "Эти строки нельзя включить в рецепт без продукта и веса. Исключите их кнопкой × или"
+                  + " добавьте замену из справочника.",
+              13,
+              MUTED));
+      for (String issue : java.util.List.copyOf(form.unresolved)) {
+        var row = ui.row();
+        ui.weighted(row, ui.text(issue, 13, MUTED));
+        row.addView(
+            ui.icon(
+                "×",
+                "Исключить строку из сохраняемого рецепта",
+                () -> {
+                  if (state.busy) return;
+                  form.unresolved.remove(issue);
+                  form.dirty = true;
+                  unresolved.removeView(row);
+                  if (form.unresolved.isEmpty()) ui.body.removeView(unresolved);
+                  preview();
+                }),
+            ui.actionLayout(44, 48));
+        unresolved.addView(row);
+      }
+      ui.body.addView(unresolved);
+    }
     composition.render(ui.body);
     calculation = ui.text("", 16, ACCENT);
     ui.body.addView(calculation);

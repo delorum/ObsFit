@@ -68,7 +68,7 @@ public final class ScreenRenderer {
             state.catalogForm == null || state.catalogForm.food == null
                 ? "Новый продукт"
                 : "Изменить продукт";
-        subtitle = "Справочник еды";
+        subtitle = state.returnMeal ? "Из приёма пищи · " + state.selected : "Справочник еды";
         toolbar.add(
             new Ui.Action(
                 "▣",

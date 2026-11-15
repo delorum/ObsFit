@@ -11,6 +11,7 @@ public final class CatalogForm {
   public String name, aliases, weight, kcal100;
   public List<RecipeIngredients.Item> ingredients;
   public boolean dirty, ingredientsExpanded;
+  public List<String> unresolved = new ArrayList<>(), importNotes = new ArrayList<>();
 
   public record Draft(
       String originalName,
@@ -21,7 +22,9 @@ public final class CatalogForm {
       String kcal100,
       String ingredients,
       boolean expanded,
-      boolean dirty)
+      boolean dirty,
+      List<String> unresolved,
+      List<String> importNotes)
       implements Serializable {}
 
   public record Preview(Double portionCalories, String error) {}
@@ -44,6 +47,9 @@ public final class CatalogForm {
   }
 
   public VaultMarkdown.Food input() {
+    if (!unresolved.isEmpty())
+      throw new IllegalArgumentException(
+          "Исключите строки без веса/справочника или добавьте их как ингредиенты из справочника");
     return new VaultMarkdown.Food(
         name,
         PortionForm.aliasLines(aliases),
@@ -167,7 +173,9 @@ public final class CatalogForm {
         kcal100,
         RecipeIngredients.toMarkdown(RecipeIngredients.materialize(original.catalog, ingredients)),
         ingredientsExpanded,
-        dirty);
+        dirty,
+        List.copyOf(unresolved),
+        List.copyOf(importNotes));
   }
 
   public static CatalogForm restore(VaultRepository.CatalogSnapshot source, Draft draft) {
@@ -188,6 +196,9 @@ public final class CatalogForm {
             source.catalog, RecipeIngredients.parse(source.catalog, draft.ingredients()));
     form.ingredientsExpanded = draft.expanded();
     form.dirty = draft.dirty();
+    form.unresolved = new ArrayList<>(draft.unresolved() == null ? List.of() : draft.unresolved());
+    form.importNotes =
+        new ArrayList<>(draft.importNotes() == null ? List.of() : draft.importNotes());
     return form;
   }
 
