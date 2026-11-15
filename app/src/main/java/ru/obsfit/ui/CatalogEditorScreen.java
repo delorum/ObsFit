@@ -142,10 +142,12 @@ public final class CatalogEditorScreen {
     if (!weight.getText().toString().equals(form.weight)) weight.setText(form.weight);
     if (!kcal.getText().toString().equals(form.kcal100)) kcal.setText(form.kcal100);
     refreshing = false;
+    String summary =
+        result.portionCalories() == null
+            ? ""
+            : "Порция по умолчанию: " + VaultMarkdown.fmt(result.portionCalories()) + " ккал";
     calculation.setText(
-        result.error() == null
-            ? "Порция по умолчанию: " + VaultMarkdown.fmt(result.portionCalories()) + " ккал"
-            : result.error());
+        summary + (result.error() == null ? "" : (summary.isEmpty() ? "" : "\n") + result.error()));
     calculation.setTextColor(result.error() == null ? ACCENT : MUTED);
   }
 }

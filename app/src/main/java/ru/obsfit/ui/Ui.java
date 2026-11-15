@@ -170,7 +170,6 @@ public final class Ui {
     b.setTextSize(
         switch (icon) {
           case "≡", "↻", "⚙" -> 28;
-          case "‹", "›" -> 34;
           case "ккал" -> 14;
           default -> 22;
         });
@@ -178,17 +177,10 @@ public final class Ui {
     b.setPadding(0, 0, 0, 0);
     if (icon.equals("↻") || icon.equals("▦")) {
       b.setText("");
-      b.setIcon(
-          androidx.appcompat.content.res.AppCompatResources.getDrawable(
-              activity,
-              icon.equals("↻")
-                  ? ru.obsfit.R.drawable.ic_refresh
-                  : ru.obsfit.R.drawable.ic_calculator));
-      b.setIconTint(ColorStateList.valueOf(INK));
-      b.setIconSize(dp(icon.equals("↻") ? 32 : 26));
-      b.setIconPadding(0);
-      b.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
-      b.setGravity(Gravity.CENTER);
+      buttonIcon(
+          b,
+          icon.equals("↻") ? ru.obsfit.R.drawable.ic_refresh : ru.obsfit.R.drawable.ic_calculator,
+          icon.equals("▦") ? 26 : 32);
     }
     b.setContentDescription(description);
     ViewCompat.setTooltipText(b, description);
@@ -201,15 +193,38 @@ public final class Ui {
         expanded ? ru.obsfit.R.drawable.ic_chevron_down : ru.obsfit.R.drawable.ic_chevron_right);
   }
 
-  /** Identical vector geometry rotated about its center; no font baseline offsets. */
-  public void disclosureIcon(MaterialButton button, boolean expanded) {
-    button.setIcon(chevron(expanded));
+  private void buttonIcon(MaterialButton button, int drawable, int size) {
+    button.setIcon(
+        androidx.appcompat.content.res.AppCompatResources.getDrawable(activity, drawable));
     button.setIconTint(ColorStateList.valueOf(INK));
-    button.setIconSize(dp(28));
+    button.setIconSize(dp(size));
     button.setIconPadding(button.getText().length() == 0 ? 0 : dp(4));
     button.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
     button.setGravity(Gravity.CENTER);
     button.setPadding(0, 0, 0, 0);
+  }
+
+  public MaterialButton navigation(boolean forward, String description, Runnable click) {
+    var button = icon("", description, click);
+    buttonIcon(
+        button,
+        forward ? ru.obsfit.R.drawable.ic_chevron_right : ru.obsfit.R.drawable.ic_chevron_left,
+        32);
+    return button;
+  }
+
+  public MaterialButton backButton(String label, Runnable click) {
+    var button = button(label, click);
+    buttonIcon(button, ru.obsfit.R.drawable.ic_chevron_left, 32);
+    return button;
+  }
+
+  /** Identical vector geometry rotated about its center; no font baseline offsets. */
+  public void disclosureIcon(MaterialButton button, boolean expanded) {
+    buttonIcon(
+        button,
+        expanded ? ru.obsfit.R.drawable.ic_chevron_down : ru.obsfit.R.drawable.ic_chevron_right,
+        28);
   }
 
   public MaterialButton disclosure(boolean expanded, String description, Runnable click) {
@@ -259,7 +274,7 @@ public final class Ui {
     bar.setPadding(dp(16), dp(4), dp(16), dp(4));
     if (back != null) {
       var backParams = new LinearLayout.LayoutParams(dp(48), dp(52));
-      bar.addView(icon("‹", "Назад", back), backParams);
+      bar.addView(navigation(false, "Назад", back), backParams);
     }
     LinearLayout titles = column();
     titles.addView(bold(title, 23, INK));

@@ -64,17 +64,33 @@ public final class CatalogForm {
   }
 
   public Preview preview() {
-    if (name.isBlank() || !recipe() && kcal100.isBlank())
-      return new Preview(null, "Заполните название и калорийность продукта");
+    Double calories = null;
     try {
-      VaultMarkdown.Food calculated = VaultMarkdown.catalog(save()).get(name);
+      if (!unresolved.isEmpty())
+        return new Preview(
+            null,
+            "Исключите строки без веса/справочника или добавьте их как ингредиенты из справочника");
       if (recipe()) {
-        weight = VaultMarkdown.fmt(calculated.weight);
-        kcal100 = VaultMarkdown.fmt(calculated.kcal100);
+        var nutrition =
+            RecipeIngredients.nutrition(
+                original.catalog, RecipeIngredients.materialize(original.catalog, ingredients));
+        weight = VaultMarkdown.fmt(nutrition.weight());
+        kcal100 = VaultMarkdown.fmt(nutrition.kcal100());
+        calories = (double) Math.round(nutrition.weight() * nutrition.kcal100() / 100);
+      } else if (!weight.isBlank() && !kcal100.isBlank()) {
+        calories =
+            (double)
+                Math.round(
+                    RecipeIngredients.grams(VaultMarkdown.number(weight))
+                        * VaultMarkdown.number(kcal100)
+                        / 100);
       }
+      if (name.isBlank() || !recipe() && kcal100.isBlank())
+        return new Preview(calories, "Заполните название и калорийность продукта");
+      var calculated = VaultMarkdown.catalog(save()).get(name);
       return new Preview((double) Math.round(calculated.weight * calculated.kcal100 / 100), null);
     } catch (IllegalArgumentException error) {
-      return new Preview(null, error.getMessage());
+      return new Preview(calories, error.getMessage());
     }
   }
 

@@ -47,7 +47,7 @@ final class IngredientSection {
   void render(LinearLayout parent) {
     toggle =
         ui.button(
-            "›  Ингредиенты",
+            "Ингредиенты",
             () -> {
               form.ingredientsExpanded = !form.ingredientsExpanded;
               refresh();

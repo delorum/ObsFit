@@ -73,8 +73,7 @@ public final class PortionScreen {
 
   public void render() {
     boolean backToList = !form.choosing && form.entry == null && form.selectedFood != null;
-    ui.body.addView(
-        ui.button(backToList ? "‹  Список продуктов" : "‹  Назад к дню", actions::back));
+    ui.body.addView(ui.backButton(backToList ? "Список продуктов" : "Назад к дню", actions::back));
     ui.gap(ui.body, 12);
     if (form.modeSwitchingAllowed()) {
       LinearLayout mode = ui.row();
@@ -190,13 +189,15 @@ public final class PortionScreen {
     if (form.newFood) {
       LinearLayout aliases = ui.column();
       aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
-      ui.body.addView(
-          ui.button(
-              "Алиасы  ⌄",
-              () -> {
-                form.aliasesExpanded = !form.aliasesExpanded;
-                aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
-              }));
+      var aliasToggle = ui.button("Алиасы", () -> {});
+      ui.disclosureIcon(aliasToggle, form.aliasesExpanded);
+      aliasToggle.setOnClickListener(
+          v -> {
+            form.aliasesExpanded = !form.aliasesExpanded;
+            aliases.setVisibility(form.aliasesExpanded ? View.VISIBLE : View.GONE);
+            ui.disclosureIcon(aliasToggle, form.aliasesExpanded);
+          });
+      ui.body.addView(aliasToggle);
       EditText alias =
           ui.field(aliases, "Алиасы: по одному на строке", form.aliases, false, form.newFood);
       ui.multiline(alias, 2);
