@@ -42,9 +42,30 @@ public final class AppController {
     if (day != null) state.selected = day.note.date;
     state.screen = AppState.Screen.DAY;
     state.portion = null;
+    state.diaryRecipe = null;
     state.catalogForm = null;
     state.returnPortion = null;
     state.pendingBarcode = null;
+  }
+
+  public void editRecipe(RecipeBlocks.Group group) {
+    if (state.day == null) throw new IllegalStateException("Откройте день");
+    state.diaryRecipe = new DiaryRecipeForm(state.day, group);
+    state.screen = AppState.Screen.DIARY_RECIPE;
+    state.error = null;
+  }
+
+  /** A drop onto a collapsed group reveals it and all ancestors even when line offsets changed. */
+  public void expandRecipe(RecipeBlocks.Group target) {
+    if (target == null || state.day == null) return;
+    for (var group : state.day.day.recipes) {
+      if (!group.name().equals(target.name()) || !group.section().equals(target.section()))
+        continue;
+      state.expanded.add(group.section());
+      for (var parent : state.day.day.recipes)
+        if (parent.line() <= group.line() && parent.end() >= group.end())
+          state.expanded.add("recipe:" + state.day.note.path + ":" + parent.line());
+    }
   }
 
   public void portion(String section, VaultMarkdown.Entry entry) {
@@ -110,6 +131,7 @@ public final class AppController {
     state.screen = AppState.Screen.CATALOG;
     state.catalogForm = null;
     state.portion = null;
+    state.diaryRecipe = null;
     state.returnPortion = null;
     state.pendingBarcode = null;
   }
@@ -120,6 +142,7 @@ public final class AppController {
     state.catalog = source;
     state.catalogForm = new CatalogForm(source, food);
     state.portion = null;
+    state.diaryRecipe = null;
     state.screen = AppState.Screen.CATALOG_EDITOR;
     state.pendingBarcode = null;
   }
@@ -178,7 +201,14 @@ public final class AppController {
     if (state.screen != target.source()) throw new IllegalStateException("Откройте исходную форму");
     String value = calculatorValue(target, index, name);
     state.calculator =
-        new CalculatorForm(target, index, name, target.ingredient() ? initial : value, scrollY);
+        new CalculatorForm(
+            target,
+            index,
+            name,
+            target.ingredient() || target.source() == AppState.Screen.DIARY_RECIPE
+                ? initial
+                : value,
+            scrollY);
     state.screen = AppState.Screen.CALCULATOR;
     state.error = null;
   }
@@ -197,6 +227,22 @@ public final class AppController {
   }
 
   private String calculatorValue(CalculatorForm.Target target, int index, String name) {
+    if (target.source() == AppState.Screen.DIARY_RECIPE) {
+      var form = state.diaryRecipe;
+      if (form == null) throw new IllegalStateException("Блюдо закрыто");
+      if (target == CalculatorForm.Target.DIARY_NEW_WEIGHT) {
+        var food = form.original.catalog.get(name);
+        if (food == null) throw new IllegalStateException("Продукт больше не найден");
+        return Numbers.plain(food.weight);
+      }
+      var entry =
+          form.day().entries.stream()
+              .filter(e -> e.line == index && e.name.equals(name))
+              .findFirst()
+              .orElseThrow(() -> new IllegalStateException("Ингредиент изменился"));
+      if (entry.weight == null) throw new IllegalStateException("У записи нет веса");
+      return Numbers.plain(entry.weight);
+    }
     if (target.ingredient()) {
       var form = ingredientForm(target);
       if (index >= 0) {
@@ -262,6 +308,10 @@ public final class AppController {
       return;
     } else
       switch (calc.target) {
+        case DIARY_WEIGHT -> state.diaryRecipe.weight(calc.ingredientIndex, result);
+        case DIARY_NEW_WEIGHT ->
+            state.diaryRecipe.add(
+                state.diaryRecipe.original.catalog.get(calc.ingredientName), result);
         case PORTION_WEIGHT -> state.portion.changePortionWeight(result);
         case PORTION_DEFAULT_WEIGHT -> {
           state.portion.defaultWeight = result;
@@ -335,6 +385,7 @@ public final class AppController {
     state.day = day;
     state.catalog = catalog;
     state.portion = null;
+    state.diaryRecipe = null;
     state.catalogForm = null;
     state.returnPortion = null;
     state.calculator = null;
@@ -360,7 +411,11 @@ public final class AppController {
                 : saved.screen();
     state.screen = sourceScreen;
     try {
-      if (sourceScreen == AppState.Screen.CATALOG_EDITOR && saved.catalog() != null)
+      if (sourceScreen == AppState.Screen.DIARY_RECIPE) {
+        if (saved.diaryRecipe() == null)
+          throw new IllegalStateException("Черновик блюда не найден");
+        state.diaryRecipe = DiaryRecipeForm.restore(day, saved.diaryRecipe());
+      } else if (sourceScreen == AppState.Screen.CATALOG_EDITOR && saved.catalog() != null)
         state.catalogForm = CatalogForm.restore(catalog, saved.catalog());
       else if (saved.returnPortion() != null && sourceScreen == AppState.Screen.CATALOG_EDITOR)
         returnFromCatalog(day);
@@ -393,6 +448,7 @@ public final class AppController {
               ? AppState.Screen.CATALOG
               : AppState.Screen.DAY;
       state.portion = null;
+      state.diaryRecipe = null;
       state.catalogForm = null;
       state.returnPortion = null;
       state.pendingBarcode = null;

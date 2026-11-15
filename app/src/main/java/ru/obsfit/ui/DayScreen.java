@@ -23,6 +23,10 @@ public final class DayScreen {
 
     void moveRecipe(RecipeBlocks.Group group);
 
+    void editRecipe(RecipeBlocks.Group group);
+
+    void reparent(RecipeBlocks.Piece piece, RecipeBlocks.Group target, RecipeBlocks.Piece after);
+
     void entryMenu(VaultMarkdown.Entry entry);
 
     void navigate(int delta);
@@ -168,6 +172,7 @@ public final class DayScreen {
           if (!state.expanded.add(name)) state.expanded.remove(name);
           actions.redraw();
         });
+    DiaryDrag.target(ui, heading, name, null, null, state, actions);
     card.addView(heading);
     if (state.expanded.contains(name)) {
       if (entries.isEmpty()) card.addView(ui.text("Пока ничего", 14, MUTED));
@@ -200,7 +205,18 @@ public final class DayScreen {
     LinearLayout wrapper = ui.column();
     Ui.ClickRow heading = ui.clickRow();
     heading.setMinimumHeight(ui.dp(48));
-    ui.weighted(heading, ui.text((expanded ? "⌄ " : "› ") + group.name(), 16, INK));
+    heading.addView(
+        ui.icon(
+            expanded ? "⌄" : "›",
+            "Раскрыть или свернуть ингредиенты",
+            () -> {
+              state.scrollY = ui.scroll.getScrollY();
+              if (!state.expanded.add(key)) state.expanded.remove(key);
+              actions.redraw();
+            }),
+        ui.actionLayout(36, 48));
+    ui.weighted(heading, ui.text(group.name(), 16, INK));
+    DiaryDrag.target(ui, heading, group.section(), group, null, state, actions);
     heading.addView(ui.text(VaultMarkdown.fmt(group.calories()) + " ккал", 14, ACCENT));
     heading.setContentDescription(
         group.name()
@@ -208,15 +224,27 @@ public final class DayScreen {
             + VaultMarkdown.fmt(group.calories())
             + " ккал, "
             + (expanded ? "свернуть" : "раскрыть ингредиенты")
-            + ". Смахните влево для удаления блюда целиком, вправо для переноса.");
-    Swipes.bind(ui, heading, () -> actions.deleteRecipe(group), () -> actions.moveRecipe(group));
+            + ". Нажмите название для редактирования этой порции. Смахните влево для удаления блюда"
+            + " целиком, вправо для переноса.");
+    Swipes.bind(
+        ui,
+        heading,
+        () -> actions.deleteRecipe(group),
+        () -> actions.moveRecipe(group),
+        () -> DiaryDrag.start(heading, RecipeBlocks.piece(group)));
     heading.setOnClickListener(
         v -> {
           state.scrollY = ui.scroll.getScrollY();
-          if (!state.expanded.add(key)) state.expanded.remove(key);
-          actions.redraw();
+          actions.editRecipe(group);
         });
     wrapper.addView(heading);
+    if (!expanded) {
+      View outside = new View(ui.activity);
+      outside.setContentDescription("Вставить после блюда в приём пищи");
+      wrapper.addView(outside, new LinearLayout.LayoutParams(-1, ui.dp(10)));
+      DiaryDrag.target(
+          ui, outside, group.section(), null, RecipeBlocks.piece(group), state, actions);
+    }
     if (expanded) {
       LinearLayout children = ui.column();
       children.setPadding(ui.dp(10), 0, 0, 0);
@@ -237,6 +265,7 @@ public final class DayScreen {
             entry.weight == null ? "Без веса" : VaultMarkdown.fmt(entry.weight) + " г", 13, MUTED));
     ui.weighted(row, labels);
     row.addView(ui.text(VaultMarkdown.fmt(entry.kcal) + " ккал", 16, INK));
+    DiaryDrag.target(ui, row, entry.section, null, RecipeBlocks.piece(entry), state, actions);
     row.addView(
         ui.icon("⋮", "Действия с записью", () -> actions.entryMenu(entry)),
         ui.actionLayout(40, 48));
@@ -246,13 +275,13 @@ public final class DayScreen {
             + VaultMarkdown.fmt(entry.kcal)
             + " ккал. Нажмите для редактирования; смахните влево для удаления, вправо для"
             + " переноса.");
-    Swipes.bind(ui, row, () -> actions.delete(entry), () -> actions.move(entry));
+    Swipes.bind(
+        ui,
+        row,
+        () -> actions.delete(entry),
+        () -> actions.move(entry),
+        () -> DiaryDrag.start(row, RecipeBlocks.piece(entry)));
     row.setOnClickListener(v -> actions.portion(entry.section, entry));
-    row.setOnLongClickListener(
-        v -> {
-          actions.entryMenu(entry);
-          return true;
-        });
     wrapper.addView(row);
     View divider = new View(ui.activity);
     divider.setBackgroundColor(0xff383f4a);

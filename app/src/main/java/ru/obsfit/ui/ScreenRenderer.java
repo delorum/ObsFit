@@ -35,6 +35,10 @@ public final class ScreenRenderer {
             ? null
             : actions::back;
     switch (state.screen) {
+      case DIARY_RECIPE -> {
+        title = "Изменить блюдо";
+        subtitle = state.diaryRecipe.group.section() + " · " + state.selected;
+      }
       case FOOD_HISTORY -> {
         title = "История";
         subtitle = state.foodHistory.food.name;
@@ -89,6 +93,7 @@ public final class ScreenRenderer {
         historyScreen = new FoodHistoryScreen(ui, state.foodHistory, actions);
         historyScreen.render();
       }
+      case DIARY_RECIPE -> new DiaryRecipeScreen(ui, state, actions, priority).render();
       case CALCULATOR -> new CalculatorScreen(ui, state.calculator, actions).render();
       case DAY -> new DayScreen(ui, controller, actions).render();
       case PORTION -> new PortionScreen(ui, state, actions, priority).render();

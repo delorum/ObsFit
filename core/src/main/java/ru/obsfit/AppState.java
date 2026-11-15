@@ -13,7 +13,8 @@ public final class AppState {
     CATALOG,
     CATALOG_EDITOR,
     CALCULATOR,
-    FOOD_HISTORY
+    FOOD_HISTORY,
+    DIARY_RECIPE
   }
 
   public enum ScanTarget {
@@ -27,6 +28,7 @@ public final class AppState {
   public VaultRepository.Snapshot day;
   public VaultRepository.CatalogSnapshot catalog;
   public PortionForm portion;
+  public DiaryRecipeForm diaryRecipe;
   public CatalogForm catalogForm;
   public SportsPlan sportsPlan;
   public MealUsage mealUsage = new MealUsage();
@@ -51,7 +53,8 @@ public final class AppState {
       ScanTarget scanTarget,
       int scrollY,
       CalculatorForm.Draft calculator,
-      FoodHistory.Draft foodHistory)
+      FoodHistory.Draft foodHistory,
+      DiaryRecipeForm.Draft diaryRecipe)
       implements Serializable {}
 
   public Saved save() {
@@ -67,6 +70,7 @@ public final class AppState {
         scanTarget,
         scrollY,
         calculator == null ? null : calculator.draft(),
-        foodHistory == null ? null : foodHistory.draft());
+        foodHistory == null ? null : foodHistory.draft(),
+        diaryRecipe == null ? null : diaryRecipe.draft());
   }
 }

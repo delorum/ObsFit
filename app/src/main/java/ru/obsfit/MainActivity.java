@@ -679,6 +679,48 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   @Override
+  public void editRecipe(RecipeBlocks.Group group) {
+    if (state.busy || state.day == null) return;
+    state.scrollY = ui.scroll.getScrollY();
+    controller.editRecipe(group);
+    redraw();
+  }
+
+  @Override
+  public void diaryCalculator(int line, String name, String initial) {
+    controller.calculator(
+        line < 0 ? CalculatorForm.Target.DIARY_NEW_WEIGHT : CalculatorForm.Target.DIARY_WEIGHT,
+        line,
+        name,
+        initial,
+        ui.scroll.getScrollY());
+    redraw();
+  }
+
+  @Override
+  public void saveDiaryRecipe() {
+    if (state.busy || state.diaryRecipe == null) return;
+    try {
+      var form = state.diaryRecipe;
+      String changed = form.save();
+      mutate(form.original, () -> changed);
+    } catch (IllegalArgumentException | IllegalStateException error) {
+      error(error.getMessage());
+    }
+  }
+
+  @Override
+  public void reparent(
+      RecipeBlocks.Piece piece, RecipeBlocks.Group target, RecipeBlocks.Piece after) {
+    if (state.busy || state.day == null) return;
+    var original = state.day;
+    mutate(
+        original,
+        () -> RecipeBlocks.reparent(original.day.source, piece, target, after, original.catalog),
+        day -> controller.expandRecipe(target));
+  }
+
+  @Override
   public void deleteRecipe(RecipeBlocks.Group group) {
     if (state.busy || state.day == null) return;
     var original = state.day;
@@ -801,7 +843,14 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   private void mutate(VaultRepository.Snapshot original, Work<String> change) {
-    state.scrollY = ui.scroll.getScrollY();
+    mutate(original, change, day -> {});
+  }
+
+  private void mutate(
+      VaultRepository.Snapshot original,
+      Work<String> change,
+      java.util.function.Consumer<VaultRepository.Snapshot> after) {
+    if (state.screen == AppState.Screen.DAY) state.scrollY = ui.scroll.getScrollY();
     task(
         () -> {
           repo.save(original, change.run(), null);
@@ -810,6 +859,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         day -> {
           updateMealUsage(day);
           controller.day(day);
+          after.accept(day);
           redraw();
         });
   }
@@ -1154,6 +1204,15 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
         if (state.catalogForm != null && state.catalogForm.dirty)
           discard(this::finishCatalogEditor);
         else finishCatalogEditor();
+      }
+      case DIARY_RECIPE -> {
+        Runnable leave =
+            () -> {
+              controller.day(state.day);
+              redraw();
+            };
+        if (state.diaryRecipe != null && state.diaryRecipe.dirty) discard(leave);
+        else leave.run();
       }
       case PORTION -> {
         if (controller.portionBackToChoices()) {

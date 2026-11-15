@@ -41,7 +41,7 @@ public final class RecipeBlocks {
     return name;
   }
 
-  private static int indent(String line) {
+  static int indent(String line) {
     int count = 0;
     while (count < line.length() && Character.isWhitespace(line.charAt(count))) count++;
     return count;
@@ -88,7 +88,7 @@ public final class RecipeBlocks {
     return String.join("\n", lines);
   }
 
-  private static Group requireGroup(VaultMarkdown.Day day, Group expected) {
+  static Group requireGroup(VaultMarkdown.Day day, Group expected) {
     return day.recipes.stream()
         .filter(
             group ->
@@ -143,16 +143,125 @@ public final class RecipeBlocks {
     return VaultMarkdown.addAll(removed, target, block, catalog);
   }
 
+  public static void checkName(String name) {
+    String value = name.trim();
+    if (value.isEmpty()
+        || value.contains("\n")
+        || value.contains("\r")
+        || value.contains(":")
+        || !value.equals(label(value + ":")))
+      throw new IllegalArgumentException("Введите название блюда без двоеточий и переносов строк");
+  }
+
+  /** Replace exactly one diary subtree, keeping its position and surrounding indentation. */
+  public static String replace(
+      String source, Group expected, String block, VaultMarkdown.Catalog catalog) {
+    requireGroup(VaultMarkdown.day(source, catalog), expected);
+    var lines = new ArrayList<>(Arrays.asList(source.replace("\r\n", "\n").split("\n", -1)));
+    String prefix = lines.get(expected.line()).substring(0, indent(lines.get(expected.line())));
+    var replacement = Arrays.stream(block.split("\n", -1)).map(line -> prefix + line).toList();
+    lines.subList(expected.line(), expected.end()).clear();
+    lines.addAll(expected.line(), replacement);
+    return VaultMarkdown.recalculate(
+        String.join(source.contains("\r\n") ? "\r\n" : "\n", lines), catalog);
+  }
+
+  public record Piece(int line, int end, String section, String raw) {}
+
+  public static Piece piece(Group group) {
+    return new Piece(group.line(), group.end(), group.section(), group.raw());
+  }
+
+  public static Piece piece(VaultMarkdown.Entry entry) {
+    return new Piece(entry.line, entry.line + 1, entry.section, entry.raw);
+  }
+
+  /** Move one entry or whole subtree within its meal, into a group or out to the meal root. */
+  public static String reparent(
+      String source, Piece expected, Group target, Piece after, VaultMarkdown.Catalog catalog) {
+    var day = VaultMarkdown.day(source, catalog);
+    boolean valid =
+        day.recipes.stream().map(RecipeBlocks::piece).anyMatch(expected::equals)
+            || day.entries.stream().map(RecipeBlocks::piece).anyMatch(expected::equals);
+    if (!valid) throw new IllegalStateException("Запись изменилась. Обновите день.");
+    if (target != null) {
+      requireGroup(day, target);
+      if (!target.section().equals(expected.section()))
+        throw new IllegalArgumentException("Другой приём пищи");
+      if (target.line() >= expected.line() && target.line() < expected.end())
+        throw new IllegalArgumentException("Нельзя поместить блюдо внутрь самого себя");
+    }
+    if (after != null) {
+      boolean found =
+          day.entries.stream().map(RecipeBlocks::piece).anyMatch(after::equals)
+              || day.recipes.stream().map(RecipeBlocks::piece).anyMatch(after::equals);
+      if (!found) throw new IllegalStateException("Место вставки изменилось");
+      if (!after.section().equals(expected.section()))
+        throw new IllegalArgumentException("Другой приём пищи");
+      if (after.line() >= expected.line() && after.line() < expected.end()) return source;
+    }
+    var ancestors =
+        day.recipes.stream()
+            .filter(g -> g.line() < expected.line() && g.end() >= expected.end())
+            .toList();
+    var lines = new ArrayList<>(Arrays.asList(source.replace("\r\n", "\n").split("\n", -1)));
+    int at;
+    if (target != null) at = target.line() + 1;
+    else if (after != null) {
+      at = after.end();
+      // A root-level drop below an ordinary nested entry belongs after its entire root group.
+      for (var ancestor : day.recipes)
+        if (after.line() > ancestor.line() && after.line() < ancestor.end())
+          at = Math.max(at, ancestor.end());
+    } else {
+      at = -1;
+      boolean[] normal = VaultMarkdown.textLines(lines.toArray(String[]::new));
+      for (int i = 0; i < lines.size(); i++) {
+        var heading = Pattern.compile("^#{2,3}\\s+(.+?)\\s*#*\\s*$").matcher(lines.get(i));
+        if (normal[i]
+            && heading.matches()
+            && VaultMarkdown.sectionName(heading.group(1)).equals(expected.section())) {
+          at = i + 1;
+          break;
+        }
+      }
+      if (at < 0) throw new IllegalStateException("Раздел больше не найден");
+    }
+    int removedCount = expected.end() - expected.line();
+    List<String> block = new ArrayList<>(Arrays.asList(expected.raw().split("\n", -1)));
+    int oldIndent = indent(block.get(0));
+    String prefix = " ".repeat(target == null ? 0 : indent(lines.get(target.line())) + 2);
+    for (int i = 0; i < block.size(); i++) block.set(i, prefix + block.get(i).substring(oldIndent));
+    lines.subList(expected.line(), expected.end()).clear();
+    if (at >= expected.end()) at -= removedCount;
+    // Track original ancestors after insertion, then remove only those that became empty.
+    List<Integer> affected = new ArrayList<>();
+    lines.addAll(at, block);
+    for (var old : ancestors) {
+      int line = old.line() + (at <= old.line() ? block.size() : 0);
+      affected.add(line);
+    }
+    String changed =
+        cleanEmptyAt(
+            String.join(source.contains("\r\n") ? "\r\n" : "\n", lines), catalog, affected);
+    return VaultMarkdown.recalculate(changed, catalog);
+  }
+
   /** Remove only recipe labels whose final ingredient was just removed or moved out. */
   static String cleanAfterEdit(String source, VaultMarkdown.Catalog catalog, List<Group> affected) {
+    return cleanEmptyAt(source, catalog, affected.stream().map(Group::line).toList());
+  }
+
+  private static String cleanEmptyAt(
+      String source, VaultMarkdown.Catalog catalog, List<Integer> affected) {
     if (affected.isEmpty()) return source;
     var updated = VaultMarkdown.day(source, catalog);
     Map<Integer, Group> current = new HashMap<>();
     for (var group : updated.recipes) current.put(group.line(), group);
     Set<Integer> empty = new TreeSet<>(Comparator.reverseOrder());
-    for (var old : affected) {
-      var group = current.get(old.line());
-      if (group == null || group.entries().isEmpty()) empty.add(old.line());
+    for (int line : affected) {
+      var group = current.get(line);
+      if (group == null || group.entries().isEmpty()) empty.add(line);
     }
     List<String> lines =
         new ArrayList<>(Arrays.asList(source.replace("\r\n", "\n").split("\n", -1)));

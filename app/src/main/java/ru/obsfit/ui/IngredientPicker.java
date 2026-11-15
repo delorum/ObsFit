@@ -34,67 +34,25 @@ final class IngredientPicker {
   }
 
   void choose() {
-    if (state.busy) return;
-    LinearLayout body = ui.column();
-    body.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), ui.dp(8));
-    EditText search = ui.field(body, "Найти продукт или блюдо", "", false, true);
-    ScrollView scroll = new ScrollView(ui.activity);
-    LinearLayout list = ui.column();
-    scroll.addView(list);
-    body.addView(scroll, new LinearLayout.LayoutParams(-1, ui.dp(300)));
-    var dialog =
-        new MaterialAlertDialogBuilder(ui.activity)
-            .setTitle("Добавить ингредиент")
-            .setView(body)
-            .setNegativeButton("Отмена", null)
-            .create();
-    List<VaultMarkdown.Food> available = new ArrayList<>();
-    for (var food : form.original.catalog.foods)
-      if (RecipeIngredients.available(
-          form.original.catalog, food, form.food == null ? null : form.food.name))
-        available.add(food);
-    Runnable fill =
-        () -> {
-          list.removeAllViews();
-          var matches = FoodSearch.find(available, search.getText().toString(), priority);
-          int shown = 0;
-          for (var food : matches) {
-            if (shown++ >= 100) break;
-            LinearLayout option = ui.column();
-            option.setPadding(ui.dp(10), ui.dp(10), ui.dp(10), ui.dp(10));
-            option.addView(ui.bold(food.name, 16, INK));
-            option.addView(
-                ui.text(
-                    VaultMarkdown.fmt(food.kcal100)
-                        + " ккал/100 г"
-                        + (food.ingredients.isEmpty() ? "" : " · составное блюдо"),
-                    12,
-                    MUTED));
-            option.setOnClickListener(
-                v -> {
-                  dialog.dismiss();
-                  if (food.ingredients.isEmpty()) weight(food, -1);
-                  else {
-                    form.add(food, food.weight);
-                    changed.run();
-                  }
-                });
-            list.addView(option);
+    var available =
+        form.original.catalog.foods.stream()
+            .filter(
+                food ->
+                    RecipeIngredients.available(
+                        form.original.catalog, food, form.food == null ? null : form.food.name))
+            .collect(java.util.stream.Collectors.toList());
+    FoodPicker.show(
+        ui,
+        state,
+        available,
+        priority,
+        food -> {
+          if (food.ingredients.isEmpty()) weight(food, -1);
+          else {
+            form.add(food, food.weight);
+            changed.run();
           }
-          if (matches.isEmpty())
-            list.addView(
-                ui.text(
-                    available.isEmpty()
-                        ? "Нет подходящих продуктов. Сначала добавьте их в справочник."
-                        : "Ничего не найдено",
-                    14,
-                    MUTED));
-          if (matches.size() > 100)
-            list.addView(ui.text("Уточните поиск: показаны первые 100 записей", 12, MUTED));
-        };
-    ui.watch(search, q -> fill.run());
-    fill.run();
-    dialog.show();
+        });
   }
 
   void weight(VaultMarkdown.Food selected, int index) {

@@ -12,11 +12,14 @@ public final class CalculatorForm {
     CATALOG_WEIGHT,
     CATALOG_KCAL100,
     PORTION_INGREDIENT,
-    CATALOG_INGREDIENT;
+    CATALOG_INGREDIENT,
+    DIARY_WEIGHT,
+    DIARY_NEW_WEIGHT;
 
     public AppState.Screen source() {
       return switch (this) {
         case CATALOG_WEIGHT, CATALOG_KCAL100, CATALOG_INGREDIENT -> AppState.Screen.CATALOG_EDITOR;
+        case DIARY_WEIGHT, DIARY_NEW_WEIGHT -> AppState.Screen.DIARY_RECIPE;
         default -> AppState.Screen.PORTION;
       };
     }
