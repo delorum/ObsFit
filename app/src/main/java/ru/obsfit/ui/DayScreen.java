@@ -238,19 +238,23 @@ public final class DayScreen {
           actions.editRecipe(group);
         });
     wrapper.addView(heading);
-    if (!expanded) {
-      View outside = new View(ui.activity);
-      outside.setContentDescription("Вставить после блюда в приём пищи");
-      wrapper.addView(outside, new LinearLayout.LayoutParams(-1, ui.dp(10)));
-      DiaryDrag.target(
-          ui, outside, group.section(), null, RecipeBlocks.piece(group), state, actions);
-    }
     if (expanded) {
       LinearLayout children = ui.column();
       children.setPadding(ui.dp(10), 0, 0, 0);
       foodRows(children, group.entries(), group.section(), group.line());
       wrapper.addView(children);
     }
+    // Sibling insertion belongs to the group's parent, both folded and unfolded.
+    // Keep the target after the complete subtree, never between its heading and children.
+    var container = RecipeBlocks.parent(state.day.day, group.line());
+    View afterGroup = new View(ui.activity);
+    afterGroup.setContentDescription(
+        "Вставить после "
+            + group.name()
+            + (container == null ? " в приём пищи" : " внутри " + container.name()));
+    wrapper.addView(afterGroup, new LinearLayout.LayoutParams(-1, ui.dp(24)));
+    DiaryDrag.target(
+        ui, afterGroup, group.section(), container, RecipeBlocks.piece(group), state, actions);
     return wrapper;
   }
 
