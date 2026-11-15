@@ -71,6 +71,17 @@ public final class DiaryRecipeScreen {
     java.util.Map<Integer, Object> items = new java.util.TreeMap<>();
     for (var entry : day.entries) items.put(entry.line, entry);
     for (var group : day.recipes) if (group.line() != 2) items.put(group.line(), group);
+    java.util.List<String> weightLabels = new java.util.ArrayList<>(),
+        calorieLabels = new java.util.ArrayList<>();
+    for (var entry : day.entries) {
+      if (entry.weight != null) weightLabels.add(Numbers.plain(entry.weight) + " г");
+      calorieLabels.add(VaultMarkdown.fmt(entry.kcal) + " ккал");
+    }
+    for (var group : day.recipes) {
+      weightLabels.add(VaultMarkdown.fmt(group.grams()) + " г");
+      calorieLabels.add(VaultMarkdown.fmt(group.calories()) + " ккал");
+    }
+    var columns = new IngredientColumns(ui, weightLabels, calorieLabels);
     for (var item : items.entrySet()) {
       int line = item.getKey();
       var row = ui.row();
@@ -80,12 +91,16 @@ public final class DiaryRecipeScreen {
       row.setPadding(ui.dp(depth * 12), 0, 0, 0);
       if (item.getValue() instanceof RecipeBlocks.Group group) {
         ui.weighted(row, ui.text(group.name() + ":", 16, INK));
-        row.addView(ui.text(VaultMarkdown.fmt(group.calories()) + " ккал", 13, MUTED));
+        var weightLabel = ui.text(VaultMarkdown.fmt(group.grams()) + " г", 14, MUTED);
+        weightLabel.setGravity(android.view.Gravity.CENTER);
+        columns.weight(row, weightLabel);
+        columns.calories(row, VaultMarkdown.fmt(group.calories()) + " ккал");
       } else {
         var entry = (VaultMarkdown.Entry) item.getValue();
         ui.weighted(row, ui.text(entry.name.isBlank() ? "Калории" : entry.name, 16, INK));
         if (entry.weight != null)
-          row.addView(
+          columns.weight(
+              row,
               ui.button(
                   Numbers.plain(entry.weight) + " г",
                   () ->
@@ -94,7 +109,8 @@ public final class DiaryRecipeScreen {
                           Numbers.plain(entry.weight),
                           line,
                           value -> form.weight(line, value))));
-        row.addView(ui.text(VaultMarkdown.fmt(entry.kcal) + " ккал", 13, MUTED));
+        else columns.weight(row, new android.widget.Space(ui.activity));
+        columns.calories(row, VaultMarkdown.fmt(entry.kcal) + " ккал");
       }
       row.addView(
           ui.icon(

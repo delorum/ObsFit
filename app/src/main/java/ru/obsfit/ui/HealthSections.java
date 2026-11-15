@@ -39,7 +39,9 @@ public final class HealthSections {
     card.setBackground(ui.background(CARD, 20));
     var heading = ui.clickRow();
     heading.setMinimumHeight(ui.dp(48));
-    ui.weighted(heading, ui.bold((state.expanded.contains(name) ? "⌄  " : "›  ") + name, 18, INK));
+    var label = ui.bold(name, 18, INK);
+    ui.disclosureLabel(label, state.expanded.contains(name));
+    ui.weighted(heading, label);
     heading.addView(
         ui.text(summary, 14, summary.equals("!") ? RED : summary.equals("—") ? MUTED : ACCENT));
     heading.setContentDescription(

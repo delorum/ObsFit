@@ -202,7 +202,7 @@ public class DiaryRecipeTest {
   }
 
   @Test
-  public void dropBelowOrdinaryNestedItemPromotesAfterEntireRootGroup() {
+  public void explicitMealLevelInsertionAfterNestedItemDoesNotSplitItsRootGroup() {
     var bread = entry(SOURCE, "хлеб", "Завтрак");
     var coffee = entry(SOURCE, "кофе", "Завтрак");
     String result = move(SOURCE, RecipeBlocks.piece(bread), null, RecipeBlocks.piece(coffee));
@@ -328,6 +328,98 @@ public class DiaryRecipeTest {
     assertTrue(c.state.expanded.contains("Завтрак"));
     for (var group : c.state.day.day.recipes)
       assertTrue(c.state.expanded.contains("recipe:" + c.state.day.note.path + ":" + group.line()));
+  }
+
+  @Test
+  public void dropAfterNestedIngredientUsesItsImmediateParentAndExactOrder() {
+    var after = entry(SOURCE, "сыр", "Завтрак");
+    var outside =
+        VaultMarkdown.day(SOURCE, catalog).entries.stream()
+            .filter(e -> e.raw.equals("хлеб 10 г 20 ккал"))
+            .findFirst()
+            .orElseThrow();
+    var parent = RecipeBlocks.parent(VaultMarkdown.day(SOURCE, catalog), after.line);
+    assertEquals("бутерброд", parent.name());
+    String result = move(SOURCE, RecipeBlocks.piece(outside), parent, RecipeBlocks.piece(after));
+    var group = group(result, "бутерброд");
+    assertEquals(3, group.entries().size());
+    assertEquals(
+        List.of("хлеб", "сыр", "хлеб"), group.entries().stream().map(e -> e.name).toList());
+    assertEquals(10, group.entries().get(2).weight, 0);
+    assertEquals("кофе", entry(result, "кофе", "Завтрак").name);
+  }
+
+  @Test
+  public void reordersSiblingsWithinRecipeInsteadOfMovingOut() {
+    var day = VaultMarkdown.day(SOURCE, catalog);
+    var bread = entry(SOURCE, "хлеб", "Завтрак");
+    var cheese = entry(SOURCE, "сыр", "Завтрак");
+    String result =
+        move(
+            SOURCE,
+            RecipeBlocks.piece(bread),
+            RecipeBlocks.parent(day, cheese.line),
+            RecipeBlocks.piece(cheese));
+    assertEquals(
+        List.of("сыр", "хлеб"),
+        group(result, "бутерброд").entries().stream().map(e -> e.name).toList());
+    assertEquals(2, group(result, "Завтрак дома").entries().size() - 1);
+  }
+
+  @Test
+  public void dropFromParentIntoNestedRecipeAfterItsFirstIngredient() {
+    var day = VaultMarkdown.day(SOURCE, catalog);
+    var after = entry(SOURCE, "хлеб", "Завтрак");
+    var coffee = entry(SOURCE, "кофе", "Завтрак");
+    String result =
+        move(
+            SOURCE,
+            RecipeBlocks.piece(coffee),
+            RecipeBlocks.parent(day, after.line),
+            RecipeBlocks.piece(after));
+    assertEquals(
+        List.of("хлеб", "кофе", "сыр"),
+        group(result, "бутерброд").entries().stream().map(e -> e.name).toList());
+    assertEquals(5, entry(result, "кофе", "Завтрак").kcal, 0);
+  }
+
+  @Test
+  public void rootIngredientHasNoParentAndDropRetainsMealLevel() {
+    var outside =
+        VaultMarkdown.day(SOURCE, catalog).entries.stream()
+            .filter(e -> e.raw.equals("хлеб 10 г 20 ккал"))
+            .findFirst()
+            .orElseThrow();
+    assertNull(RecipeBlocks.parent(VaultMarkdown.day(SOURCE, catalog), outside.line));
+    String result =
+        move(
+            SOURCE,
+            RecipeBlocks.piece(entry(SOURCE, "кофе", "Завтрак")),
+            null,
+            RecipeBlocks.piece(outside));
+    var coffee = entry(result, "кофе", "Завтрак");
+    assertNull(RecipeBlocks.parent(VaultMarkdown.day(result, catalog), coffee.line));
+    assertTrue(result.contains("хлеб 10 г 20 ккал\n- кофе 5 ккал"));
+  }
+
+  @Test
+  public void rejectsAnchorInDifferentParentAndMovesWholeDishAfterIngredient() {
+    var root = group(SOURCE, "Завтрак дома");
+    var nested = group(SOURCE, "бутерброд");
+    var cheese = entry(SOURCE, "сыр", "Завтрак");
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            RecipeBlocks.reparent(
+                SOURCE,
+                RecipeBlocks.piece(entry(SOURCE, "кофе", "Завтрак")),
+                root,
+                RecipeBlocks.piece(cheese),
+                catalog));
+    var coffee = entry(SOURCE, "кофе", "Завтрак");
+    String result = move(SOURCE, RecipeBlocks.piece(nested), root, RecipeBlocks.piece(coffee));
+    assertEquals(root.line(), group(result, "бутерброд").parentLine());
+    assertTrue(entry(result, "кофе", "Завтрак").line < group(result, "бутерброд").line());
   }
 
   @Test

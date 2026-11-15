@@ -195,6 +195,37 @@ public final class Ui {
     return b;
   }
 
+  private android.graphics.drawable.Drawable chevron(boolean expanded) {
+    return androidx.appcompat.content.res.AppCompatResources.getDrawable(
+        activity,
+        expanded ? ru.obsfit.R.drawable.ic_chevron_down : ru.obsfit.R.drawable.ic_chevron_right);
+  }
+
+  /** Identical vector geometry rotated about its center; no font baseline offsets. */
+  public void disclosureIcon(MaterialButton button, boolean expanded) {
+    button.setIcon(chevron(expanded));
+    button.setIconTint(ColorStateList.valueOf(INK));
+    button.setIconSize(dp(28));
+    button.setIconPadding(button.getText().length() == 0 ? 0 : dp(4));
+    button.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+    button.setGravity(Gravity.CENTER);
+    button.setPadding(0, 0, 0, 0);
+  }
+
+  public MaterialButton disclosure(boolean expanded, String description, Runnable click) {
+    MaterialButton button = icon("", description, click);
+    disclosureIcon(button, expanded);
+    return button;
+  }
+
+  public void disclosureLabel(TextView label, boolean expanded) {
+    var drawable = chevron(expanded);
+    drawable.setBounds(0, 0, dp(28), dp(28));
+    label.setCompoundDrawablesRelative(drawable, null, null, null);
+    label.setCompoundDrawablePadding(dp(4));
+    label.setGravity(Gravity.CENTER_VERTICAL);
+  }
+
   /** Layout dimensions in dp. Spacing belongs to the containing row. */
   public LinearLayout.LayoutParams actionLayout(int width, int height) {
     return new LinearLayout.LayoutParams(dp(width), dp(height));

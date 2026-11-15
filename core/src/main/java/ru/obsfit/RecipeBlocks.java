@@ -176,6 +176,13 @@ public final class RecipeBlocks {
     return new Piece(entry.line, entry.line + 1, entry.section, entry.raw);
   }
 
+  /** Immediate container of a diary row, independent of fold state. */
+  public static Group parent(VaultMarkdown.Day day, int line) {
+    Group parent = null;
+    for (var group : day.recipes) if (line > group.line() && line < group.end()) parent = group;
+    return parent;
+  }
+
   /** Move one entry or whole subtree within its meal, into a group or out to the meal root. */
   public static String reparent(
       String source, Piece expected, Group target, Piece after, VaultMarkdown.Catalog catalog) {
@@ -198,6 +205,12 @@ public final class RecipeBlocks {
       if (!found) throw new IllegalStateException("Место вставки изменилось");
       if (!after.section().equals(expected.section()))
         throw new IllegalArgumentException("Другой приём пищи");
+      if (target != null) {
+        var parent = parent(day, after.line());
+        if (parent == null || parent.line() != target.line())
+          throw new IllegalArgumentException(
+              "Запись назначения не является ингредиентом выбранного блюда");
+      }
       if (after.line() >= expected.line() && after.line() < expected.end()) return source;
     }
     var ancestors =
@@ -206,7 +219,7 @@ public final class RecipeBlocks {
             .toList();
     var lines = new ArrayList<>(Arrays.asList(source.replace("\r\n", "\n").split("\n", -1)));
     int at;
-    if (target != null) at = target.line() + 1;
+    if (target != null) at = after == null ? target.line() + 1 : after.end();
     else if (after != null) {
       at = after.end();
       // A root-level drop below an ordinary nested entry belongs after its entire root group.

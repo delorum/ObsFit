@@ -130,7 +130,9 @@ public final class DayScreen {
     card.setPadding(ui.dp(14), ui.dp(8), ui.dp(14), ui.dp(12));
     card.setBackground(ui.background(CARD, 20));
     LinearLayout heading = ui.row();
-    ui.weighted(heading, ui.bold((state.expanded.contains(name) ? "⌄  " : "›  ") + name, 18, INK));
+    var sectionLabel = ui.bold(name, 18, INK);
+    ui.disclosureLabel(sectionLabel, state.expanded.contains(name));
+    ui.weighted(heading, sectionLabel);
     TextView sectionCalories = ui.text(VaultMarkdown.fmt(total) + " ккал", 14, ACCENT);
     sectionCalories.setGravity(Gravity.END);
     if (!name.equals("Заметки"))
@@ -206,15 +208,15 @@ public final class DayScreen {
     Ui.ClickRow heading = ui.clickRow();
     heading.setMinimumHeight(ui.dp(48));
     heading.addView(
-        ui.icon(
-            expanded ? "⌄" : "›",
+        ui.disclosure(
+            expanded,
             "Раскрыть или свернуть ингредиенты",
             () -> {
               state.scrollY = ui.scroll.getScrollY();
               if (!state.expanded.add(key)) state.expanded.remove(key);
               actions.redraw();
             }),
-        ui.actionLayout(36, 48));
+        ui.actionLayout(44, 48));
     ui.weighted(heading, ui.text(group.name(), 16, INK));
     DiaryDrag.target(ui, heading, group.section(), group, null, state, actions);
     heading.addView(ui.text(VaultMarkdown.fmt(group.calories()) + " ккал", 14, ACCENT));
@@ -265,7 +267,14 @@ public final class DayScreen {
             entry.weight == null ? "Без веса" : VaultMarkdown.fmt(entry.weight) + " г", 13, MUTED));
     ui.weighted(row, labels);
     row.addView(ui.text(VaultMarkdown.fmt(entry.kcal) + " ккал", 16, INK));
-    DiaryDrag.target(ui, row, entry.section, null, RecipeBlocks.piece(entry), state, actions);
+    DiaryDrag.target(
+        ui,
+        row,
+        entry.section,
+        RecipeBlocks.parent(state.day.day, entry.line),
+        RecipeBlocks.piece(entry),
+        state,
+        actions);
     row.addView(
         ui.icon("⋮", "Действия с записью", () -> actions.entryMenu(entry)),
         ui.actionLayout(40, 48));

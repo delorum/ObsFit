@@ -84,18 +84,23 @@ final class IngredientSection {
   }
 
   void refresh() {
-    String arrow = form.ingredientsExpanded ? "⌄" : "›";
+    String arrow = "";
     toggle.setText(
         form.ingredients.isEmpty()
             ? ui.activity.getString(ru.obsfit.R.string.ingredients_heading, arrow)
             : ui.activity.getString(
                 ru.obsfit.R.string.ingredients_count_heading, arrow, form.ingredients.size()));
+    toggle.setText(toggle.getText().toString().trim());
+    ui.disclosureIcon(toggle, form.ingredientsExpanded);
     ingredients.setVisibility(form.ingredientsExpanded ? View.VISIBLE : View.GONE);
     list.removeAllViews();
     if (form.ingredients.isEmpty())
       list.addView(ui.text("Добавьте продукты, чтобы собрать составное блюдо.", 14, MUTED));
     java.util.Map<Integer, LinearLayout> parents = new java.util.HashMap<>();
     parents.put(-1, list);
+    java.util.List<String> weightLabels = new java.util.ArrayList<>();
+    for (var node : form.nodes()) weightLabels.add(VaultMarkdown.fmt(node.item().grams()) + " г");
+    var columns = new IngredientColumns(ui, weightLabels, java.util.List.of());
     for (var node : form.nodes()) {
       LinearLayout parent = parents.get(node.parent());
       if (parent == null) continue;
@@ -105,11 +110,7 @@ final class IngredientSection {
       String expansion = "ingredient:" + state.screen + ":" + index;
       boolean open = state.expanded.contains(expansion);
       LinearLayout row = ui.row(), labels = ui.column();
-      labels.addView(
-          ui.text(
-              (composite ? (open ? "⌄ " : "› ") : "") + item.name() + (composite ? ":" : ""),
-              16,
-              INK));
+      labels.addView(ui.text(item.name() + (composite ? ":" : ""), 16, INK));
       labels.addView(
           ui.text(
               VaultMarkdown.fmt(
@@ -120,6 +121,7 @@ final class IngredientSection {
               12,
               MUTED));
       if (composite) {
+        ui.disclosureLabel((android.widget.TextView) labels.getChildAt(0), open);
         labels.setContentDescription(
             item.name() + (open ? ", свернуть" : ", раскрыть ингредиенты"));
         labels.setOnClickListener(
@@ -133,12 +135,13 @@ final class IngredientSection {
         var weight = ui.text(VaultMarkdown.fmt(item.grams()) + " г", 14, MUTED);
         weight.setContentDescription(
             "Вес по ингредиентам: " + item.name() + ", " + VaultMarkdown.fmt(item.grams()) + " г");
-        row.addView(weight);
+        weight.setGravity(android.view.Gravity.CENTER);
+        columns.weight(row, weight);
       } else {
         var weightButton =
             ui.button(VaultMarkdown.fmt(item.grams()) + " г", () -> picker.weight(null, index));
         weightButton.setContentDescription("Изменить вес: " + item.name());
-        row.addView(weightButton, new LinearLayout.LayoutParams(-2, -2));
+        columns.weight(row, weightButton);
       }
       if (allowStructureChanges)
         row.addView(
