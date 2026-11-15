@@ -27,8 +27,6 @@ public final class DayScreen {
 
     void reparent(RecipeBlocks.Piece piece, RecipeBlocks.Group target, RecipeBlocks.Piece after);
 
-    void entryMenu(VaultMarkdown.Entry entry);
-
     void navigate(int delta);
 
     void chooseDate();
@@ -275,9 +273,6 @@ public final class DayScreen {
         RecipeBlocks.piece(entry),
         state,
         actions);
-    row.addView(
-        ui.icon("⋮", "Действия с записью", () -> actions.entryMenu(entry)),
-        ui.actionLayout(40, 48));
     row.setContentDescription(
         (entry.name.isBlank() ? "Калории" : entry.name)
             + ", "

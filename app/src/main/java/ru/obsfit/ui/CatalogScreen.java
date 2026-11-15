@@ -11,8 +11,6 @@ public final class CatalogScreen {
     void editCatalog(VaultMarkdown.Food food);
 
     void deleteCatalog(VaultMarkdown.Food food);
-
-    void catalogMenu(VaultMarkdown.Food food);
   }
 
   private final Ui ui;
@@ -72,9 +70,6 @@ public final class CatalogScreen {
     if (!food.aliases.isEmpty())
       labels.addView(ui.text(String.join(", ", food.aliases), 12, MUTED));
     ui.weighted(row, labels);
-    row.addView(
-        ui.icon("⋮", "Действия с продуктом", () -> actions.catalogMenu(food)),
-        ui.actionLayout(44, 48));
     row.setContentDescription(
         food.name + ". Нажмите для редактирования или смахните для удаления.");
     Swipes.bind(ui, row, () -> actions.deleteCatalog(food), () -> actions.deleteCatalog(food));

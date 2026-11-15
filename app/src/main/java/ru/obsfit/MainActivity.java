@@ -636,19 +636,6 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
   }
 
   @Override
-  public void entryMenu(VaultMarkdown.Entry entry) {
-    if (state.busy) return;
-    dialogs.menu(
-        null,
-        new String[] {"Редактировать", "Переместить", "Удалить"},
-        index -> {
-          if (index == 0) portion(entry.section, entry);
-          else if (index == 1) move(entry);
-          else delete(entry);
-        });
-  }
-
-  @Override
   public void delete(VaultMarkdown.Entry entry) {
     if (state.busy) return;
     var original = state.day;
@@ -893,18 +880,6 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     if (state.busy) return;
     controller.editCatalog(state.catalog, food, false);
     redraw();
-  }
-
-  @Override
-  public void catalogMenu(VaultMarkdown.Food food) {
-    if (state.busy) return;
-    dialogs.menu(
-        null,
-        new String[] {"Редактировать", "Удалить"},
-        index -> {
-          if (index == 0) editCatalog(food);
-          else deleteCatalog(food);
-        });
   }
 
   @Override
