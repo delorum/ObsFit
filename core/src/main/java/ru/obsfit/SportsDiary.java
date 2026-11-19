@@ -18,6 +18,8 @@ public final class SportsDiary {
           new Exercise("Приседания", "Приседания", false, false, "ПланПриседания", 40),
           new Exercise("Велотренажер", "Велотренажёр", false, true, "ПланВелотренажер", 20));
   private static final Pattern HEADING = Pattern.compile("^(#{1,6})\\s+(.+?)\\s*#*\\s*$");
+  private static final Pattern BLOCK_ANCHOR =
+      Pattern.compile("(?:^|[ \t]+)\\^[A-Za-z0-9_-]+[ \t]*$");
   private static final String NUM = "\\d+(?:[.,]\\d+)?";
 
   private SportsDiary() {}
@@ -141,6 +143,29 @@ public final class SportsDiary {
         : f.lines.get(index).substring(f.lines.get(index).indexOf("::") + 2).trim();
   }
 
+  /** Visible numeric value; a terminal Obsidian block ID belongs to the note, not the input. */
+  public static String weightValue(String source) {
+    return weightValue(fields(source));
+  }
+
+  private static String weightValue(Fields fields) {
+    return BLOCK_ANCHOR
+        .matcher(read(fields, "Вес"))
+        .replaceFirst("")
+        .replaceFirst("(?iu)[ \t]*кг$", "")
+        .trim();
+  }
+
+  private static String replaceWeight(String line, String value) {
+    int at = line.indexOf("::") + 2;
+    String tail = line.substring(at);
+    var anchor = BLOCK_ANCHOR.matcher(tail);
+    String suffix = anchor.find() ? anchor.group() : "";
+    if (!suffix.isEmpty() && suffix.charAt(0) == '^') suffix = " " + suffix;
+    String separator = tail.substring(0, tail.length() - tail.stripLeading().length());
+    return line.substring(0, at) + (value.isBlank() ? "" : separator + value) + suffix;
+  }
+
   public record Summary(String workout, String weight) {}
 
   public static Summary summary(String source) {
@@ -162,11 +187,11 @@ public final class SportsDiary {
     }
     String workout =
         invalid ? "!" : completed == 0 ? "—" : completed + "/" + EXERCISES.size() + " упр.";
-    String weight = read(fields, "Вес");
+    String weight = weightValue(fields);
     if (weight.isBlank()) weight = "—";
     else
       try {
-        weight = VaultMarkdown.fmt(positive(weight.replaceFirst("(?iu)\\s*кг$", ""), true)) + " кг";
+        weight = VaultMarkdown.fmt(positive(weight, true)) + " кг";
       } catch (IllegalArgumentException error) {
         weight = "!";
       }
@@ -183,7 +208,11 @@ public final class SportsDiary {
     if (index != null)
       f.lines.set(
           index,
-          f.lines.get(index).replaceFirst("(::).*$", "$1" + (value.isBlank() ? "" : " " + value)));
+          key.equals("Вес")
+              ? replaceWeight(f.lines.get(index), value)
+              : f.lines
+                  .get(index)
+                  .replaceFirst("(::).*$", "$1" + (value.isBlank() ? "" : " " + value)));
     else if (!value.isBlank()) {
       if (f.heading < 0) {
         f.lines.add("");

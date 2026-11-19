@@ -812,7 +812,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     var original = state.day;
     try {
       dialogs.weight(
-          SportsDiary.read(original.day.source, "Вес"),
+          SportsDiary.weightValue(original.day.source),
           value -> mutate(original, () -> SportsDiary.weight(original.day.source, value)));
     } catch (IllegalArgumentException failure) {
       error(failure.getMessage());

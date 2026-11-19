@@ -102,7 +102,7 @@ public final class HealthSections {
     if (state.expanded.contains("Вес")) {
       String value;
       try {
-        value = SportsDiary.read(state.day.day.source, "Вес");
+        value = SportsDiary.weightValue(state.day.day.source);
       } catch (IllegalArgumentException error) {
         weight.addView(ui.text(error.getMessage(), 14, RED));
         return;
