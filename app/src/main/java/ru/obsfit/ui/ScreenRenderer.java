@@ -47,7 +47,8 @@ public final class ScreenRenderer {
         title = "ObsFit";
         subtitle = "Дневник питания";
         toolbar.add(new Ui.Action("≡", "Справочник еды", actions::openCatalog));
-        toolbar.add(new Ui.Action("↻", "Обновить данные из хранилища", actions::refreshDay));
+        toolbar.add(
+            new Ui.Action("↻", "Обновить данные и свернуть все разделы", actions::refreshDay));
         toolbar.add(new Ui.Action("⚙", "Настройки", actions::openSettings));
       }
       case CALCULATOR -> {

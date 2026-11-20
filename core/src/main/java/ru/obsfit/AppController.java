@@ -49,6 +49,11 @@ public final class AppController {
     state.pendingBarcode = null;
   }
 
+  /** Manual refresh closes meals, health sections and all nested recipe disclosures. */
+  public void collapseDaySections() {
+    state.expanded.clear();
+  }
+
   public void editRecipe(RecipeBlocks.Group group) {
     if (state.day == null) throw new IllegalStateException("Откройте день");
     state.diaryRecipe = new DiaryRecipeForm(state.day, group);

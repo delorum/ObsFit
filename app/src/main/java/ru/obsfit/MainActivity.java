@@ -384,6 +384,9 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
 
   @Override
   public void refreshDay() {
+    if (repo == null || state.busy) return;
+    controller.collapseDaySections();
+    redraw();
     reload(true);
   }
 

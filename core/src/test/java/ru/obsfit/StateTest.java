@@ -25,6 +25,40 @@ public final class StateTest {
   }
 
   @Test
+  public void manualRefreshClosesEverySectionAndPersistsCollapsedState() throws Exception {
+    var c = controller();
+    c.state.expanded.addAll(VaultMarkdown.SECTIONS);
+    c.state.expanded.addAll(
+        List.of(
+            "Тренировка",
+            "Вес",
+            "recipe:" + Fixtures.PATH + ":4",
+            "recipe:" + Fixtures.PATH + ":5"));
+    var source = c.state.day;
+    var selected = c.state.selected;
+    c.collapseDaySections();
+    assertTrue(c.state.expanded.isEmpty());
+    assertSame(source, c.state.day);
+    assertEquals(selected, c.state.selected);
+    c.day(Fixtures.day());
+    assertTrue(c.state.expanded.isEmpty());
+    var restored = new AppController();
+    restored.restore(roundTrip(c.state.save()), c.state.notes, Fixtures.day(), Fixtures.catalog());
+    assertTrue(restored.state.expanded.isEmpty());
+    c.collapseDaySections();
+    assertTrue(c.state.expanded.isEmpty());
+  }
+
+  @Test
+  public void backgroundReloadKeepsExpandedSections() {
+    var c = controller();
+    var expanded = Set.of("Завтрак", "Тренировка", "Вес", "recipe:" + Fixtures.PATH + ":4");
+    c.state.expanded.addAll(expanded);
+    c.day(Fixtures.day());
+    assertEquals(expanded, c.state.expanded);
+  }
+
+  @Test
   public void existingDatesSkipGapsAndDisableEdges() {
     var c = controller();
     c.state.notes =
