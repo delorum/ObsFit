@@ -21,7 +21,7 @@ public class MealCatalogTest {
           + "сыр 10 г 30 ккал\n\n"
           + "### Ужин\n"
           + "хлеб 100 г 200 ккал\n\n"
-          + "### Спорт и диета\n"
+          + "## Короткая часть\n### Спорт и диета\n"
           + "Вес:: 101\n"
           + "СъеденоКалорий:: 375\n";
 
@@ -46,7 +46,7 @@ public class MealCatalogTest {
     String onlyGroup = MEAL.replace("\nсыр 10 г 30 ккал", "");
     assertEquals(1, MealCatalog.count(Fixtures.day(onlyGroup, FOOD).day, "Завтрак"));
     assertThrows(IllegalStateException.class, () -> form(onlyGroup));
-    assertThrows(IllegalStateException.class, () -> form("### Завтрак\n"));
+    assertThrows(IllegalStateException.class, () -> form("## Питание\n### Завтрак\n"));
   }
 
   @Test
@@ -108,7 +108,7 @@ public class MealCatalogTest {
   @Test
   public void preservesNestedRecipesSeveralLevelsAndTheirOverrides() {
     String source =
-        "### Завтрак\n"
+        "## Питание\n### Завтрак\n"
             + "набор:\n"
             + "  - бутерброд:\n"
             + "    - хлеб 12 г 24 ккал\n"
@@ -153,7 +153,7 @@ public class MealCatalogTest {
 
   @Test
   public void allUnsupportedRowsCanBeDraftedAndExplicitlyExcluded() {
-    var form = form("### Завтрак\n100 ккал\nдругое 70 ккал\n");
+    var form = form("## Питание\n### Завтрак\n100 ккал\nдругое 70 ккал\n");
     assertEquals(2, form.unresolved.size());
     assertTrue(form.ingredients.isEmpty());
     var restored = CatalogForm.restore(catalog(), form.draft());
@@ -165,7 +165,7 @@ public class MealCatalogTest {
 
   @Test
   public void zeroCalorieProductsAndLegacyWeightedRecipesTransfer() {
-    var form = form("### Завтрак\nбутерброд 120 г 280 ккал\nвода 200 г 0 ккал\n");
+    var form = form("## Питание\n### Завтрак\nбутерброд 120 г 280 ккал\nвода 200 г 0 ккал\n");
     assertEquals(120, form.ingredients.get(0).grams(), 0);
     assertEquals(2, form.ingredients.get(0).children().size());
     assertEquals(200, form.ingredients.get(1).grams(), 0);
@@ -255,7 +255,7 @@ public class MealCatalogTest {
 
   @Test
   public void legacySnackSectionUsesSameCountingAndImport() {
-    String source = "### Перекусы\nхлеб 30 г 60 ккал\nсыр 10 г 30 ккал\n";
+    String source = "## Питание\n### Перекусы\nхлеб 30 г 60 ккал\nсыр 10 г 30 ккал\n";
     var day = Fixtures.day(source, FOOD);
     assertEquals(2, MealCatalog.count(day.day, "Перекус 4"));
     var form = MealCatalog.create(day, catalog(), "Перекус 4");

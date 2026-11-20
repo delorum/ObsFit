@@ -59,7 +59,7 @@ public final class PortionModesTest {
     var original = Fixtures.day();
     var controller = new AppController();
     controller.day(original);
-    controller.portion("Заметки", original.day.entries.get(0));
+    controller.portion("Завтрак", original.day.entries.get(0));
     assertFalse(controller.state.portion.modeSwitchingAllowed());
     assertFalse(controller.state.portion.choosing);
     var food = controller.state.portion.selectedFood;
@@ -75,8 +75,10 @@ public final class PortionModesTest {
 
   @Test
   public void manualEntryEditingKeepsDescriptionAndCaloriesWithoutProductModeButtons() {
-    var original = Fixtures.day(Fixtures.DAY + "кафе 100 ккал\n", Fixtures.FOOD);
-    var form = new PortionForm(original, "Заметки", original.day.entries.get(1));
+    var original =
+        Fixtures.day(
+            Fixtures.DAY.replace("### Завтрак\n", "### Завтрак\nкафе 100 ккал\n"), Fixtures.FOOD);
+    var form = new PortionForm(original, "Завтрак", original.day.entries.get(0));
     assertFalse(form.modeSwitchingAllowed());
     assertTrue(form.manual);
     form.manualKcal = "150";

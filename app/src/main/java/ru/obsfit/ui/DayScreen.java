@@ -116,8 +116,7 @@ public final class DayScreen {
         () ->
             mealBudgets =
                 MealPlan.sectionBudgets(state.day.note.date, LocalDateTime.now(), state.day.day));
-    for (String section : VaultMarkdown.SECTIONS) if (!section.equals("Заметки")) section(section);
-    section("Заметки");
+    for (String section : VaultMarkdown.SECTIONS) section(section);
     new HealthSections(ui, state, actions).render();
     ui.body.addView(ui.text("Листайте существующие дни · ↻ обновляет открытый день", 12, MUTED));
     ui.scrollTo(state.scrollY);
@@ -135,39 +134,31 @@ public final class DayScreen {
     ui.weighted(heading, sectionLabel);
     TextView sectionCalories = ui.text(VaultMarkdown.fmt(total) + " ккал", 14, ACCENT);
     sectionCalories.setGravity(Gravity.END);
-    if (!name.equals("Заметки"))
-      ui.onClock(
-          () -> {
-            var budget = mealBudgets.get(name);
-            String labelText = budget.label();
-            if (!labelText.contentEquals(sectionCalories.getText()))
-              sectionCalories.setText(labelText);
-            sectionCalories.setTextColor(budget.remaining() < 0 ? RED : ACCENT);
-            boolean highlighted =
-                name.equals(MealPlan.highlightedSection(state.selected, LocalDateTime.now()));
-            sectionCalories.setTypeface(
-                null,
-                highlighted ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
-            sectionCalories.setContentDescription(labelText.replace("\n", ", "));
-            heading.setContentDescription(
-                name
-                    + ", "
-                    + labelText.replace("\n", ", ")
-                    + ", "
-                    + (state.expanded.contains(name) ? "свернуть" : "раскрыть"));
-          });
+    ui.onClock(
+        () -> {
+          var budget = mealBudgets.get(name);
+          String labelText = budget.label();
+          if (!labelText.contentEquals(sectionCalories.getText()))
+            sectionCalories.setText(labelText);
+          sectionCalories.setTextColor(budget.remaining() < 0 ? RED : ACCENT);
+          boolean highlighted =
+              name.equals(MealPlan.highlightedSection(state.selected, LocalDateTime.now()));
+          sectionCalories.setTypeface(
+              null,
+              highlighted ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+          sectionCalories.setContentDescription(labelText.replace("\n", ", "));
+          heading.setContentDescription(
+              name
+                  + ", "
+                  + labelText.replace("\n", ", ")
+                  + ", "
+                  + (state.expanded.contains(name) ? "свернуть" : "раскрыть"));
+        });
     heading.addView(sectionCalories);
     heading.addView(
         ui.icon("＋", "Добавить еду: " + name, () -> actions.portion(name, null)),
         ui.actionLayout(48, 48));
     heading.setMinimumHeight(ui.dp(48));
-    if (name.equals("Заметки"))
-      heading.setContentDescription(
-          name
-              + ", "
-              + VaultMarkdown.fmt(total)
-              + " килокалорий, "
-              + (state.expanded.contains(name) ? "свернуть" : "раскрыть"));
     heading.setOnClickListener(
         v -> {
           state.scrollY = ui.scroll.getScrollY();
@@ -179,7 +170,7 @@ public final class DayScreen {
     if (state.expanded.contains(name)) {
       if (entries.isEmpty()) card.addView(ui.text("Пока ничего", 14, MUTED));
       foodRows(card, entries, name, -1);
-      if (!name.equals("Заметки") && MealCatalog.count(state.day.day, name) > 1)
+      if (MealCatalog.count(state.day.day, name) > 1)
         card.addView(
             ui.button("Сохранить в справочник", () -> actions.mealToCatalog(name)),
             new LinearLayout.LayoutParams(-1, ui.dp(48)));

@@ -112,22 +112,20 @@ public class RecipeBlocksTest {
   @Test
   public void protectedTextBlankLinesAndUnindentedFoodDefineGroupBoundaries() {
     String source =
-        "```\n"
+        "## Питание\n```\n"
             + BLOCK
             + "\n```\n> бутерброд:\n>   - хлеб 40 г 80 ккал\n"
             + BLOCK
             + "\nсыр 10 г 30 ккал\n\nбутерброд:\n\nхлеб 40 г 80 ккал\n";
     var day = VaultMarkdown.day(source, catalog);
-    assertEquals(
-        2, day.recipes.size()); // A known but empty label is retained as an editable placeholder.
+    assertEquals(1, day.recipes.size()); // Empty labels are not food groups.
     assertEquals(2, day.recipes.get(0).entries().size());
-    assertTrue(day.recipes.get(1).entries().isEmpty());
     assertEquals(250, day.total, 0);
   }
 
   @Test
   public void indentedMarkdownHeadingsEndingInColonAreNotRecipeLabels() {
-    var day = VaultMarkdown.day("  ### Обед:\n  хлеб 40 г 80 ккал\n", catalog);
+    var day = VaultMarkdown.day("## Питание\n  ### Обед:\n  хлеб 40 г 80 ккал\n", catalog);
     assertTrue(day.recipes.isEmpty());
     assertEquals(80, day.total, 0);
   }

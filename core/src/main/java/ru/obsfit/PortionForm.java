@@ -210,7 +210,7 @@ public final class PortionForm {
               + VaultMarkdown.fmt(VaultMarkdown.number(manualKcal))
               + " ккал";
       // Descriptions must not turn into weighted portions, comments or Markdown when reopened.
-      var parsed = VaultMarkdown.day(line, catalog).entries;
+      var parsed = VaultMarkdown.day("## Питание\n" + line, catalog).entries;
       if (parsed.size() != 1 || parsed.get(0).weight != null || !parsed.get(0).name.equals(title))
         throw new IllegalArgumentException(
             "Описание должно быть одной строкой без Markdown-разметки и веса в конце");
@@ -281,6 +281,9 @@ public final class PortionForm {
   }
 
   public static PortionForm restore(VaultRepository.Snapshot snapshot, Draft draft) {
+    if (!VaultMarkdown.SECTIONS.contains(VaultMarkdown.sectionName(draft.section())))
+      throw new IllegalStateException(
+          "Раздел больше не поддерживается. Добавляйте еду в приёмы пищи внутри «Питание».");
     VaultMarkdown.Entry entry = null;
     if (draft.entryRaw() != null) {
       for (var item : snapshot.day.entries)

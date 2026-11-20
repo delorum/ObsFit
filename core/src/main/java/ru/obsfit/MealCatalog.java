@@ -26,7 +26,7 @@ public final class MealCatalog {
   public static CatalogForm create(
       VaultRepository.Snapshot snapshot, VaultRepository.CatalogSnapshot catalog, String section) {
     section = VaultMarkdown.sectionName(section);
-    if (!VaultMarkdown.SECTIONS.contains(section) || section.equals("Заметки"))
+    if (!VaultMarkdown.SECTIONS.contains(section))
       throw new IllegalArgumentException("Выберите приём пищи");
     var day = VaultMarkdown.day(snapshot.day.source, catalog.catalog);
     if (count(day, section) <= 1)

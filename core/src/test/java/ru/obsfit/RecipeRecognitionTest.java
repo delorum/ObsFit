@@ -20,7 +20,7 @@ public class RecipeRecognitionTest {
   @Test
   public void
       recognizesAllIngredientsIgnoringProportionsAndExtraFoodWithoutChangingDiaryCalories() {
-    String text = "### Обед\nхл 5 г 10 ккал\nср 100 г 300 ккал\nпирог 200 г 400 ккал\n";
+    String text = "## Питание\n### Обед\nхл 5 г 10 ккал\nср 100 г 300 ккал\nпирог 200 г 400 ккал\n";
     var day = VaultMarkdown.day(text, catalog);
     var hit = recipe(text).get(0);
     assertEquals("Обед", hit.section());
@@ -34,17 +34,17 @@ public class RecipeRecognitionTest {
 
   @Test
   public void neverCombinesIngredientsAcrossMealsOrDifferentSnacks() {
-    assertTrue(recipe("### Завтрак\nхл 40\n### Обед\nсыр 20\n").isEmpty());
-    assertTrue(recipe("### Перекус 1\nхл 40\n### Перекус 2\nсыр 20\n").isEmpty());
-    assertTrue(recipe("### Обед\nхл 40\n").isEmpty());
-    assertTrue(recipe("### Обед\nхл 0 г 0 ккал\nсыр 20\n").isEmpty());
+    assertTrue(recipe("## Питание\n### Завтрак\nхл 40\n### Обед\nсыр 20\n").isEmpty());
+    assertTrue(recipe("## Питание\n### Перекус 1\nхл 40\n### Перекус 2\nсыр 20\n").isEmpty());
+    assertTrue(recipe("## Питание\n### Обед\nхл 40\n").isEmpty());
+    assertTrue(recipe("## Питание\n### Обед\nхл 0 г 0 ккал\nсыр 20\n").isEmpty());
   }
 
   @Test
   public void mergesRepeatedIngredientRowsAndFindsOnlyOneRecipePerMeal() {
     var hits =
         recipe(
-            "### Обед\nхл 20 г 40 ккал\nхл 10 г 20 ккал\n"
+            "## Питание\n### Обед\nхл 20 г 40 ккал\nхл 10 г 20 ккал\n"
                 + "ср 5 г 15 ккал\nсыр 15 г 45 ккал\n### Ужин\nхл 40\nсыр 20\n");
     assertEquals(2, hits.size());
     assertEquals(50, hits.get(0).grams(), 0);
@@ -55,7 +55,7 @@ public class RecipeRecognitionTest {
   @Test
   public void respectsProtectedMarkdownAndDoesNotTreatManualCaloriesAsAnIngredient() {
     for (String cheese : List.of("сыр 60 ккал", "```\nсыр 20\n```", "> сыр 20", "<!-- сыр 20 -->"))
-      assertTrue(recipe("### Обед\nхл 40\n" + cheese + "\n").isEmpty());
+      assertTrue(recipe("## Питание\n### Обед\nхл 40\n" + cheese + "\n").isEmpty());
   }
 
   @Test
@@ -64,7 +64,8 @@ public class RecipeRecognitionTest {
     var hits =
         new FoodOccurrences(changed, List.of(changed.get("ббр")))
             .find(
-                VaultMarkdown.day("### Обед\nхл 40 г 80 ккал\nсыр 20 г 60 ккал\n", changed)
+                VaultMarkdown.day(
+                        "## Питание\n### Обед\nхл 40 г 80 ккал\nсыр 20 г 60 ккал\n", changed)
                     .entries);
     var hit = hits.stream().filter(h -> h.food() == changed.get("ббр")).findFirst().orElseThrow();
     assertEquals(140, hit.calories(), 1e-9);
@@ -73,7 +74,8 @@ public class RecipeRecognitionTest {
 
   @Test
   public void explicitRecipeRowsAreNotDuplicatedByMatchingLeavesInTheSameMeal() {
-    var hits = recipe("### Обед\nбутерброд 30 г 70 ккал\nббр 60 г 140 ккал\nхл 40\nсыр 20\n");
+    var hits =
+        recipe("## Питание\n### Обед\nбутерброд 30 г 70 ккал\nббр 60 г 140 ккал\nхл 40\nсыр 20\n");
     assertEquals(2, hits.size());
     assertFalse(hits.get(0).estimated());
     assertEquals(30, hits.get(0).grams(), 0);
@@ -91,7 +93,9 @@ public class RecipeRecognitionTest {
     var hits =
         new FoodOccurrences(nested)
             .find(
-                VaultMarkdown.day("### Обед\nхл 30 г 60 ккал\nср 10 г 30 ккал\n", nested).entries);
+                VaultMarkdown.day(
+                        "## Питание\n### Обед\nхл 30 г 60 ккал\nср 10 г 30 ккал\n", nested)
+                    .entries);
     for (String name : List.of("тр", "ббр", "другой бутерброд")) {
       var found = hits.stream().filter(hit -> hit.food() == nested.get(name)).toList();
       assertEquals(1, found.size());
@@ -109,7 +113,7 @@ public class RecipeRecognitionTest {
                 "| тарелка | ббр 30 г<br>хл 10 г | | |\n<!-- food-table:end -->"));
     var hits =
         new FoodOccurrences(nested)
-            .find(VaultMarkdown.day("### Обед\nббр 60 г 140 ккал\n", nested).entries);
+            .find(VaultMarkdown.day("## Питание\n### Обед\nббр 60 г 140 ккал\n", nested).entries);
     var hit =
         hits.stream().filter(h -> h.food() == nested.get("тарелка")).findFirst().orElseThrow();
     assertEquals(60, hit.grams(), 1e-9);
@@ -124,7 +128,9 @@ public class RecipeRecognitionTest {
             Fixtures.FOOD.replace("200 | 40", "0 | 40").replace("300 | 20", "0 | 20"));
     var hits =
         new FoodOccurrences(zero, List.of(zero.get("ббр")))
-            .find(VaultMarkdown.day("### Обед\nхл 40 г 0 ккал\nсыр 20 г 0 ккал\n", zero).entries);
+            .find(
+                VaultMarkdown.day("## Питание\n### Обед\nхл 40 г 0 ккал\nсыр 20 г 0 ккал\n", zero)
+                    .entries);
     var hit = hits.stream().filter(h -> h.food() == zero.get("ббр")).findFirst().orElseThrow();
     assertEquals(60, hit.grams(), 0);
     assertEquals(0, hit.calories(), 0);
@@ -135,7 +141,8 @@ public class RecipeRecognitionTest {
     var usage = new MealUsage();
     var matcher = new FoodOccurrences(catalog);
     String text =
-        "### Перекус 1\nхл 40\n### Перекус 2\nсыр 20\n" + "### Перекус 3\nхл 40\nсыр 20\n";
+        "## Питание\n### Перекус 1\nхл 40\n### Перекус 2\nсыр 20\n"
+            + "## Питание\n### Перекус 3\nхл 40\nсыр 20\n";
     var hits = matcher.find(VaultMarkdown.day(text, catalog).entries);
     usage.replaceDay(TODAY, hits, TODAY);
     usage.replaceDay(TODAY, hits, TODAY);
@@ -157,7 +164,8 @@ public class RecipeRecognitionTest {
     for (int i = -15; i <= 1; i++) {
       var date = TODAY.plusDays(i);
       storage.data.put(
-          DiaryLayout.weekFolder(date) + "/" + date + "-день.md", "### Обед\nхл 40\nсыр 20\n");
+          DiaryLayout.weekFolder(date) + "/" + date + "-день.md",
+          "## Питание\n### Обед\nхл 40\nсыр 20\n");
     }
     var repo = new VaultRepository(storage, new Fixtures.MemoryBackups());
     var usage = repo.rebuildMealUsage(TODAY, catalog);
@@ -167,7 +175,7 @@ public class RecipeRecognitionTest {
     var restored = MealUsage.decode(usage.encode(TODAY), TODAY);
     assertEquals(14, restored.frequency(catalog.get("ббр"), "Обед", TODAY));
     assertFalse(
-        MealUsage.decode(usage.encode(TODAY).replace("meal-usage-v4", "meal-usage-v1"), TODAY)
+        MealUsage.decode(usage.encode(TODAY).replace("meal-usage-v5", "meal-usage-v1"), TODAY)
             .rebuilt());
   }
 
@@ -180,7 +188,7 @@ public class RecipeRecognitionTest {
       var date = TODAY.plusDays(30).minusDays(i);
       storage.data.put(
           DiaryLayout.weekFolder(date) + "/" + date + "-день.md",
-          "### Обед\nхл 40 г 80 ккал\nсыр 20 г 60 ккал\n"
+          "## Питание\n### Обед\nхл 40 г 80 ккал\nсыр 20 г 60 ккал\n"
               + "### Ужин\nхл 20 г 40 ккал\nсыр 10 г 30 ккал\n");
     }
     var search = new FoodHistory.Search(storage, catalog, catalog.get("ббр"));

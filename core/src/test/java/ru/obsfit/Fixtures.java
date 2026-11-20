@@ -25,10 +25,9 @@ final class Fixtures {
   static final String DAY =
       "## Заметки\n"
           + "Текст дневника\n"
-          + "хлеб 40 г 80 ккал\n\n"
           + "## Питание\n"
-          + "### Завтрак\n\n"
-          + "### Спорт и диета\n"
+          + "### Завтрак\nхлеб 40 г 80 ккал\n\n"
+          + "## Короткая часть\n### Спорт и диета\n"
           + "СъеденоКалорий:: 80\n";
 
   static VaultRepository.CatalogSnapshot catalog() {

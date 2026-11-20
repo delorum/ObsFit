@@ -183,7 +183,7 @@ public class RecipeTreeTest {
   @Test
   public void nestingOldMarkedBlocksPreservesIngredientWeightsAndRecordedCalories() {
     String source =
-        "### Обед\n"
+        "## Питание\n### Обед\n"
             + "набор:\n"
             + "  - хлеб 20 г 40 ккал\n"
             + "  - сыр 10 г 30 ккал\n"

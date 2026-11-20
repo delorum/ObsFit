@@ -19,7 +19,7 @@ public class DiaryRecipeTest {
           + "хлеб 10 г 20 ккал\n\n"
           + "### Ужин\n"
           + "сыр 10 г 30 ккал\n\n"
-          + "### Спорт и диета\n"
+          + "## Короткая часть\n### Спорт и диета\n"
           + "Вес:: 101\n"
           + "СъеденоКалорий:: 195\n";
   private final VaultMarkdown.Catalog catalog = VaultMarkdown.catalog(Fixtures.FOOD);

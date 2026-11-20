@@ -35,9 +35,12 @@ public final class FormTest {
 
   @Test
   public void manualCaloriesRemainIndependentOfWeight() {
-    var original = Fixtures.day(Fixtures.DAY + "другая еда 123.5 ккал\n", Fixtures.FOOD);
-    var entry = original.day.entries.get(1);
-    var form = new PortionForm(original, "Заметки", entry);
+    var original =
+        Fixtures.day(
+            Fixtures.DAY.replace("### Завтрак\n", "### Завтрак\nдругая еда 123.5 ккал\n"),
+            Fixtures.FOOD);
+    var entry = original.day.entries.get(0);
+    var form = new PortionForm(original, "Завтрак", entry);
     assertTrue(form.manual);
     form.manualKcal = "150,5";
     assertEquals(150.5, form.total(), 0);

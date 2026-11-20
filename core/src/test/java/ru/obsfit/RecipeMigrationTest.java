@@ -15,7 +15,7 @@ public class RecipeMigrationTest {
 
   @Test
   public void neverChangesDatesBeforeNovemberAndDoesNotRelabelMarkedBlocks() {
-    String source = "### Обед\nхл 40 г 80 ккал\nсыр 20 г 60 ккал\n";
+    String source = "## Питание\n### Обед\nхл 40 г 80 ккал\nсыр 20 г 60 ккал\n";
     assertEquals(source, RecipeMigration.mark(DATE.minusDays(1), source, catalog));
     String once = mark(source);
     assertTrue(once.contains("бутерброд:\n  - хл 40 г 80 ккал\n  - сыр 20 г 60 ккал"));
@@ -25,7 +25,7 @@ public class RecipeMigrationTest {
 
   @Test
   public void expandsLegacyExplicitRecipesWhilePreservingRecordedCalories() {
-    String source = "### Обед\nббр 30 г 75 ккал\nСъеденоКалорий:: 75\n";
+    String source = "## Питание\n### Обед\nббр 30 г 75 ккал\nСъеденоКалорий:: 75\n";
     String marked = mark(source);
     var group = VaultMarkdown.day(marked, catalog).recipes.get(0);
     assertEquals(30, group.grams(), 0);
@@ -36,10 +36,10 @@ public class RecipeMigrationTest {
 
   @Test
   public void permitsBlankLinesButNeverMovesFoodAcrossOtherTextMealsOrCode() {
-    assertTrue(mark("### Обед\nхл 40\n\nсыр 20\n").contains("бутерброд:"));
+    assertTrue(mark("## Питание\n### Обед\nхл 40\n\nсыр 20\n").contains("бутерброд:"));
     for (String separator :
         new String[] {"заметка", "### Ужин", "другое 100 ккал", "```\nтекст\n```"}) {
-      String source = "### Обед\nхл 40\n" + separator + "\nсыр 20\n";
+      String source = "## Питание\n### Обед\nхл 40\n" + separator + "\nсыр 20\n";
       assertEquals(source, mark(source));
     }
   }
@@ -54,10 +54,11 @@ public class RecipeMigrationTest {
                     + "| вода | | 0 | 100 |\n"
                     + "| набор | ббр 60 г<br>вода 100 г | | |\n"
                     + "<!-- food-table:end -->"));
-    var first = RecipeMigration.mark(DATE, "### Обед\nхл 10\nсыр 50\n", choices);
+    var first = RecipeMigration.mark(DATE, "## Питание\n### Обед\nхл 10\nсыр 50\n", choices);
     assertTrue(first.contains("другой бутерброд:"));
     assertEquals(1, VaultMarkdown.day(first, choices).recipes.size());
-    var large = RecipeMigration.mark(DATE, "### Обед\nхл 40\nсыр 20\nвода 100\n", choices);
+    var large =
+        RecipeMigration.mark(DATE, "## Питание\n### Обед\nхл 40\nсыр 20\nвода 100\n", choices);
     assertTrue(large.contains("набор:"));
     assertEquals(1, VaultMarkdown.day(large, choices).recipes.size());
   }

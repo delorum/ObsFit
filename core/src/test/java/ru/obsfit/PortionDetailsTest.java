@@ -129,7 +129,7 @@ public class PortionDetailsTest {
     assertEquals("хл", c.state.portion.query);
     assertEquals("Обед", c.state.portion.section);
     assertFalse(c.portionBackToChoices());
-    c.portion("Заметки", c.state.day.day.entries.get(0));
+    c.portion("Завтрак", c.state.day.day.entries.get(0));
     assertFalse(c.portionBackToChoices());
   }
 

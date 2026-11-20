@@ -27,7 +27,7 @@ public class HistoryProgressTest {
 
     String add(LocalDate date, String body) {
       String path = DiaryLayout.weekFolder(date) + "/" + date + "-день.md";
-      memory.data.put(path, "### Обед\n" + body + "\n");
+      memory.data.put(path, "## Питание\n### Обед\n" + body + "\n");
       return path;
     }
 

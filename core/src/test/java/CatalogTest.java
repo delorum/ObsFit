@@ -64,7 +64,7 @@ public final class CatalogTest {
     equal(null, rename.get("хл"));
     equal("хлеб белый 40 г<br>сыр 20 г", rename.get("ббр").ingredients);
     near(233.3333, rename.get("ббр").kcal100);
-    var diary = VaultMarkdown.day("хлеб 40 г 80 ккал\nСъеденоКалорий:: 80", rename);
+    var diary = VaultMarkdown.day("## Питание\nхлеб 40 г 80 ккал\nСъеденоКалорий:: 80", rename);
     near(80, diary.total);
     equal("хлеб белый", diary.entries.get(0).name);
     rejects(() -> VaultMarkdown.deleteFood(catalog, "хлеб"), "бутерброд");
@@ -73,7 +73,9 @@ public final class CatalogTest {
     equal(2, VaultMarkdown.catalog(noRecipe).foods.size());
     String deleted = VaultMarkdown.deleteFood(VaultMarkdown.catalog(noRecipe), "хлеб");
     equal(1, VaultMarkdown.catalog(deleted).foods.size());
-    near(80, VaultMarkdown.day("хлеб 40 г 80 ккал", VaultMarkdown.catalog(deleted)).total);
+    near(
+        80,
+        VaultMarkdown.day("## Питание\nхлеб 40 г 80 ккал", VaultMarkdown.catalog(deleted)).total);
     String empty = VaultMarkdown.deleteFood(VaultMarkdown.catalog(deleted), "сыр");
     equal(0, VaultMarkdown.catalog(empty).foods.size());
     String recreated =

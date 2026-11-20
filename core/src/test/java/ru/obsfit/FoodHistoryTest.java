@@ -115,7 +115,7 @@ public class FoodHistoryTest {
     assertEquals(80, hit.calories(), 0);
     assertFalse(hit.estimated());
     assertEquals(40, hit.grams(), 0);
-    assertEquals(160, VaultMarkdown.day("хл 40 г 80 ккал", catalog).total, 0);
+    assertEquals(160, VaultMarkdown.day("## Питание\nхл 40 г 80 ккал", catalog).total, 0);
   }
 
   @Test
@@ -309,7 +309,7 @@ public class FoodHistoryTest {
   public void historyDoesNotRestoreIntoAChangedDiaryEntry() throws Exception {
     var c = new AppController();
     c.day(Fixtures.day());
-    c.portion("Заметки", c.state.day.day.entries.get(0));
+    c.portion("Завтрак", c.state.day.day.entries.get(0));
     c.foodHistory(0);
     var changed =
         Fixtures.day(Fixtures.DAY.replace("40 г 80 ккал", "50 г 100 ккал"), Fixtures.FOOD);

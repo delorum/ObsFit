@@ -35,7 +35,7 @@ public class MealUsageTest {
     assertEquals(1, count(usage, "сыр", "Обед"));
     assertEquals(1, count(usage, "хлеб", "Второй обед"));
     assertEquals(1, count(usage, "сыр", "Ужин"));
-    assertEquals(1, count(usage, "хлеб", "Заметки"));
+    assertEquals(0, count(usage, "хлеб", "Заметки"));
     for (String section : List.of("Перекус 1", "Перекус 2", "Перекус 3", "Перекус 4", "Перекусы"))
       assertEquals(5, count(usage, "хлеб", section));
   }
@@ -44,7 +44,7 @@ public class MealUsageTest {
   public void includesTodayAndThirteenthPreviousDayButNotFutureOrFourteenthPreviousDay() {
     var usage = new MealUsage();
     for (int offset : List.of(-14, -13, 0, 1))
-      day(usage, TODAY.plusDays(offset), "### Обед\nхл 40\n");
+      day(usage, TODAY.plusDays(offset), "## Питание\n### Обед\nхл 40\n");
     assertEquals(2, count(usage, "хлеб", "Обед"));
     assertEquals(1, usage.frequency(catalog.get("хлеб"), "Обед", TODAY.plusDays(1)));
     assertEquals(0, usage.frequency(catalog.get("хлеб"), "Обед", TODAY.plusDays(14)));
@@ -53,12 +53,12 @@ public class MealUsageTest {
   @Test
   public void countsOccurrencesNotWeightAndReplacesEditedMovedDeletedDaysWithoutDuplicates() {
     var usage = new MealUsage();
-    String body = "### Завтрак\nхл 1\nхл 999\nкофе 80 ккал\n100 ккал\n";
+    String body = "## Питание\n### Завтрак\nхл 1\nхл 999\nкофе 80 ккал\n100 ккал\n";
     day(usage, TODAY, body);
     day(usage, TODAY, body);
     assertEquals(2, count(usage, "хлеб", "Завтрак"));
-    day(usage, TODAY.minusDays(1), "### Обед\nхл 40\n");
-    day(usage, TODAY, "### Ужин\nхл 25\n");
+    day(usage, TODAY.minusDays(1), "## Питание\n### Обед\nхл 40\n");
+    day(usage, TODAY, "## Питание\n### Ужин\nхл 25\n");
     assertEquals(0, count(usage, "хлеб", "Завтрак"));
     assertEquals(1, count(usage, "хлеб", "Ужин"));
     day(usage, TODAY, "");
@@ -75,7 +75,7 @@ public class MealUsageTest {
         new FoodOccurrences(zeroCatalog)
             .find(
                 VaultMarkdown.day(
-                        "### Обед\nхл 40 г 0 ккал\nхлеб 80 ккал\n"
+                        "## Питание\n### Обед\nхл 40 г 0 ккал\nхлеб 80 ккал\n"
                             + "```\nхл 40\n```\n> хл 40\n<!-- хл 40 -->\n",
                         zeroCatalog)
                     .entries),
@@ -86,7 +86,7 @@ public class MealUsageTest {
   @Test
   public void renameKeepsFrequencyThroughOldNameAliasWithoutDoubleCountingAliases() {
     var usage = new MealUsage();
-    day(usage, TODAY, "### Обед\nхл 40\n");
+    day(usage, TODAY, "## Питание\n### Обед\nхл 40\n");
     var renamed = new VaultMarkdown.Food("новый хлеб", List.of("хлеб", "ХЛЕБ", "хл"), "", 200, 40);
     assertEquals(1, usage.frequency(renamed, "Обед", TODAY));
     var renamedCatalog =
@@ -94,7 +94,8 @@ public class MealUsageTest {
     usage.replaceDay(
         TODAY.minusDays(1),
         new FoodOccurrences(renamedCatalog)
-            .find(VaultMarkdown.day("### Обед\nновый хлеб 40\n", renamedCatalog).entries),
+            .find(
+                VaultMarkdown.day("## Питание\n### Обед\nновый хлеб 40\n", renamedCatalog).entries),
         TODAY);
     assertEquals(2, usage.frequency(renamed, "Обед", TODAY));
   }
@@ -108,7 +109,7 @@ public class MealUsageTest {
         usage.replaceDay(
             date,
             new FoodOccurrences(catalog)
-                .find(VaultMarkdown.day("### Перекус 2\nхл 40\n", catalog).entries),
+                .find(VaultMarkdown.day("## Питание\n### Перекус 2\nхл 40\n", catalog).entries),
             date);
     }
     usage.markRebuilt(TODAY);
@@ -128,7 +129,7 @@ public class MealUsageTest {
   @Test
   public void malformedOrUnknownCacheIsDiscardedWithoutPreventingUse() {
     var usage = new MealUsage();
-    day(usage, TODAY, "### Обед\nхл 40\n");
+    day(usage, TODAY, "## Питание\n### Обед\nхл 40\n");
     usage.markRebuilt(TODAY);
     for (String encoded :
         Arrays.asList(
@@ -147,7 +148,7 @@ public class MealUsageTest {
   @Test
   public void sortingUsesDestinationFrequencyWithoutFilteringAndPreservesExactSearchPriority() {
     var usage = new MealUsage();
-    day(usage, TODAY, "### Завтрак\nхл 40\nхл 40\n### Обед\nсыр 20\nсыр 20\n");
+    day(usage, TODAY, "## Питание\n### Завтрак\nхл 40\nхл 40\n### Обед\nсыр 20\nсыр 20\n");
     assertEquals(
         "хлеб",
         FoodSearch.find(catalog.foods, "", f -> usage.frequency(f, "Завтрак", TODAY)).get(0).name);
@@ -219,7 +220,7 @@ public class MealUsageTest {
   public void rebuildReadsOnlyFourteenCalendarDaysRegardlessOfArchiveSizeOrFutureNotes()
       throws Exception {
     var storage = new Storage();
-    for (int i = -800; i < 40; i++) storage.add(TODAY.plusDays(i), "### Обед\nхл 40\n");
+    for (int i = -800; i < 40; i++) storage.add(TODAY.plusDays(i), "## Питание\n### Обед\nхл 40\n");
     var repo = new VaultRepository(storage, new Fixtures.MemoryBackups());
     var usage = repo.rebuildMealUsage(TODAY, catalog);
     assertTrue(usage.rebuilt());
@@ -232,13 +233,13 @@ public class MealUsageTest {
   public void sparseWindowDoesNotReadOrDescendIntoOldArchiveAndFailedRebuildCanBeRetried()
       throws Exception {
     var storage = new Storage();
-    storage.add(TODAY.minusYears(1), "### Обед\nсыр 20\n");
-    String path = storage.add(TODAY.minusDays(3), "### Обед\nхл 40\n");
+    storage.add(TODAY.minusYears(1), "## Питание\n### Обед\nсыр 20\n");
+    String path = storage.add(TODAY.minusDays(3), "## Питание\n### Обед\nхл 40\n");
     var repo = new VaultRepository(storage, new Fixtures.MemoryBackups());
     var old = repo.rebuildMealUsage(TODAY, catalog);
     assertEquals(1, storage.reads.size());
     assertFalse(storage.directories.contains(NoteIndex.ROOT + "/2025"));
-    storage.memory.data.put(path, "### Обед\nсыр 20\n");
+    storage.memory.data.put(path, "## Питание\n### Обед\nсыр 20\n");
     storage.fail = path;
     assertThrows(IOException.class, () -> repo.rebuildMealUsage(TODAY, catalog));
     assertEquals(1, count(old, "хлеб", "Обед"));

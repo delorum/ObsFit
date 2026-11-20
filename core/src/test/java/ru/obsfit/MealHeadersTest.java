@@ -10,13 +10,14 @@ public class MealHeadersTest {
   private static final LocalDate DATE = LocalDate.of(2026, 11, 5);
 
   private static VaultMarkdown.Day day(double limit, MealPlan.Eaten... entries) {
-    StringBuilder text = new StringBuilder();
+    StringBuilder text = new StringBuilder("## Питание\n");
     for (var entry : entries)
-      text.append("## ")
-          .append(entry.section())
-          .append("\n")
-          .append(VaultMarkdown.fmt(entry.calories()))
-          .append(" ккал\n");
+      if (VaultMarkdown.SECTIONS.contains(entry.section()))
+        text.append("### ")
+            .append(entry.section())
+            .append("\n")
+            .append(VaultMarkdown.fmt(entry.calories()))
+            .append(" ккал\n");
     text.append("## Спорт и диета\nСуточнаяНормаКалорий:: ")
         .append(VaultMarkdown.fmt(limit))
         .append("\n");
@@ -94,7 +95,12 @@ public class MealHeadersTest {
             List.of(food("Завтрак", 700), food("Ужин", 500)),
             List.of(food("Заметки", 300), food("Перекус 1", 200)))) {
       var d = day(2600, entries.toArray(MealPlan.Eaten[]::new));
-      var expected = MealPlan.guidance(DATE, DATE.atTime(11, 30), entries, 2600);
+      var expected =
+          MealPlan.guidance(
+              DATE,
+              DATE.atTime(11, 30),
+              entries.stream().filter(e -> VaultMarkdown.SECTIONS.contains(e.section())).toList(),
+              2600);
       assertEquals(expected.available(), Math.max(0, at("11:30", d).get("Перекус 1").remaining()));
     }
   }

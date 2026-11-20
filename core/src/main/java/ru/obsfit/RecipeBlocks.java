@@ -63,7 +63,7 @@ public final class RecipeBlocks {
       List<VaultMarkdown.Entry> children = new ArrayList<>();
       for (var entry : entries) if (entry.line > i && entry.line < end) children.add(entry);
       var food = catalog.get(name);
-      if (children.isEmpty() && (food == null || food.ingredients.isEmpty())) continue;
+      if (children.isEmpty()) continue;
       int parent = -1;
       for (var previous : groups) if (i > previous.line && i < previous.end) parent = previous.line;
       groups.add(
@@ -74,7 +74,7 @@ public final class RecipeBlocks {
               String.join("\n", Arrays.copyOfRange(lines, i, end)),
               food == null ? name : food.name,
               food,
-              children.isEmpty() ? "Заметки" : children.get(0).section,
+              children.get(0).section,
               List.copyOf(children)));
     }
     return List.copyOf(groups);
@@ -93,10 +93,10 @@ public final class RecipeBlocks {
       String raw, String prefix, boolean nested, VaultMarkdown.Catalog catalog) {
     var lines = Arrays.asList(raw.split("\n", -1));
     int leading = indent(lines.get(0));
-    var day = VaultMarkdown.day(raw, catalog);
+    var day = VaultMarkdown.day("## Питание\n" + raw, catalog);
     Set<Integer> foodLines = new HashSet<>();
-    for (var entry : day.entries) foodLines.add(entry.line);
-    for (var group : day.recipes) foodLines.add(group.line());
+    for (var entry : day.entries) foodLines.add(entry.line - 1);
+    for (var group : day.recipes) foodLines.add(group.line() - 1);
     List<String> result = new ArrayList<>();
     boolean recipe = label(lines.get(0)) != null;
     for (int i = 0; i < lines.size(); i++) {
@@ -250,7 +250,7 @@ public final class RecipeBlocks {
     } else {
       at = -1;
       boolean[] normal = VaultMarkdown.textLines(lines.toArray(String[]::new));
-      for (int i = 0; i < lines.size(); i++) {
+      for (int i = expected.line() - 1; i >= 0; i--) {
         var heading = Pattern.compile("^#{2,3}\\s+(.+?)\\s*#*\\s*$").matcher(lines.get(i));
         if (normal[i]
             && heading.matches()

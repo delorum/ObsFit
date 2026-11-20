@@ -9,12 +9,12 @@ import org.junit.Test;
 public class RecipeListFormattingTest {
   private final VaultMarkdown.Catalog catalog = VaultMarkdown.catalog(Fixtures.FOOD);
   private static final String SOURCE =
-      "### Завтрак\n"
+      "## Питание\n### Завтрак\n"
           + "бутерброд:\n"
           + "  - хлеб 40 г 80 ккал\n"
           + "  - сыр 20 г 60 ккал\n"
           + "сыр 10 г 30 ккал\n\n"
-          + "### Спорт и диета\n"
+          + "## Короткая часть\n### Спорт и диета\n"
           + "СъеденоКалорий:: 170\n";
 
   private RecipeBlocks.Group group(String source, String name) {
@@ -92,7 +92,7 @@ public class RecipeListFormattingTest {
   @Test
   public void editingNestedRecipeNameKeepsListHeaderAndAllChildIndentation() {
     String source =
-        "### Завтрак\n"
+        "## Питание\n### Завтрак\n"
             + "Набор:\n"
             + "  - бутерброд:\n"
             + "    - хлеб 40 г 80 ккал\n"

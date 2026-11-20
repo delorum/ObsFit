@@ -296,7 +296,7 @@ public final class MainActivity extends AppCompatActivity implements ScreenHost 
     String section =
         state.portion != null
             ? state.portion.section
-            : state.returnPortion != null ? state.returnPortion.section() : "Заметки";
+            : state.returnPortion != null ? state.returnPortion.section() : "";
     return state.mealUsage.frequency(food, section, LocalDate.now());
   }
 

@@ -23,12 +23,12 @@ public class RecipeGroupActionsTest {
           + "    - вода 100 г 0 ккал\n"
           + "  - сыр 10 г 30 ккал";
   private static final String SOURCE =
-      "## Заметки\nдругая еда 20 ккал\n\n## Питание\n### Завтрак\n"
+      "## Заметки\nТекст\n\n## Питание\n### Завтрак\n"
           + BLOCK
           + "\n\n"
           + "### Ужин\n"
-          + "хлеб 10 г 20 ккал\n\n"
-          + "### Спорт и диета\n"
+          + "хлеб 10 г 20 ккал\nдругая еда 20 ккал\n\n"
+          + "## Короткая часть\n### Спорт и диета\n"
           + "СуточнаяНормаКалорий:: 2150\n"
           + "Вес:: 103\n"
           + "СъеденоКалорий:: 210\n";
@@ -71,7 +71,7 @@ public class RecipeGroupActionsTest {
   @Test
   public void deletingOnlyNestedChildRemovesAllEmptyAncestors() {
     String source =
-        "### Завтрак\n"
+        "## Питание\n### Завтрак\n"
             + "набор:\n"
             + "  - тарелка:\n"
             + "    - бутерброд:\n"
@@ -99,7 +99,7 @@ public class RecipeGroupActionsTest {
     assertTrue(after.recipes.stream().allMatch(g -> g.section().equals("Ужин")));
     assertTrue(result.contains(BLOCK));
     assertEquals(170, group(result, "набор").calories(), 0);
-    assertEquals(190, after.section("Ужин").stream().mapToDouble(e -> e.kcal).sum(), 0);
+    assertEquals(210, after.section("Ужин").stream().mapToDouble(e -> e.kcal).sum(), 0);
   }
 
   @Test
@@ -125,8 +125,9 @@ public class RecipeGroupActionsTest {
 
   @Test
   public void moveToEarlierSectionAndLegacySnacksPreservesTotalsAndSectionAliases() {
-    String earlier = RecipeBlocks.move(SOURCE, group(SOURCE, "бутерброд"), "Заметки", catalog);
-    assertEquals("Заметки", group(earlier, "бутерброд").section());
+    String atDinner = RecipeBlocks.move(SOURCE, group(SOURCE, "набор"), "Ужин", catalog);
+    String earlier = RecipeBlocks.move(atDinner, group(atDinner, "бутерброд"), "Завтрак", catalog);
+    assertEquals("Завтрак", group(earlier, "бутерброд").section());
     assertEquals(210, VaultMarkdown.day(earlier, catalog).total, 0);
     String legacy = SOURCE.replace("### Ужин", "### Перекусы");
     String moved = RecipeBlocks.move(legacy, group(legacy, "набор"), "Перекусы", catalog);
@@ -139,7 +140,7 @@ public class RecipeGroupActionsTest {
   @Test
   public void movingTheLastNestedDishCleansItsOldAncestors() {
     String source =
-        "### Завтрак\n"
+        "## Питание\n### Завтрак\n"
             + "набор:\n"
             + "  - тарелка:\n"
             + "    - бутерброд:\n"

@@ -106,7 +106,7 @@ public class QuickAddPortionTest {
     var otherSnapshotFood = Fixtures.catalog().catalog.get("ср");
     assertThrows(IllegalStateException.class, () -> controller.quickPortion(otherSnapshotFood));
     var day = controller.state.day;
-    controller.portion("Заметки", day.day.entries.get(0));
+    controller.portion("Завтрак", day.day.entries.get(0));
     controller.chooseFromCatalog();
     assertThrows(IllegalStateException.class, () -> controller.quickPortion(day.catalog.get("ср")));
     controller.day(day);

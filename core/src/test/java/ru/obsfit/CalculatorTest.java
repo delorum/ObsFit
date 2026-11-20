@@ -325,7 +325,7 @@ public class CalculatorTest {
   public void staleUnderlyingEntryCannotReceiveAResultAfterRestore() throws Exception {
     var c = new AppController();
     c.day(Fixtures.day());
-    c.portion("Заметки", c.state.day.day.entries.get(0));
+    c.portion("Завтрак", c.state.day.day.entries.get(0));
     open(c, PORTION_WEIGHT);
     var changed =
         Fixtures.day(Fixtures.DAY.replace("40 г 80 ккал", "50 г 100 ккал"), Fixtures.FOOD);

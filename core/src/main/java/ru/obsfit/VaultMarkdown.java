@@ -11,7 +11,6 @@ public final class VaultMarkdown {
 
   public static final List<String> SECTIONS =
       List.of(
-          "Заметки",
           "Завтрак",
           "Перекус 1",
           "Обед",
@@ -508,16 +507,26 @@ public final class VaultMarkdown {
     String[] lines = source.replace("\r\n", "\n").split("\n", -1);
     boolean[] text = textLines(lines);
     List<Entry> entries = new ArrayList<>();
-    String section = "Заметки";
+    String section = "Питание";
+    int nutritionDepth = 0;
     for (int i = 0; i < lines.length; i++) {
       String raw = lines[i], s = raw.trim();
       if (!text[i] || RecipeBlocks.label(raw) != null) continue;
       Matcher heading = HEADING.matcher(s);
       if (heading.matches()) {
-        String headingSection = sectionName(heading.group(2));
-        section = SECTIONS.contains(headingSection) ? headingSection : "Заметки";
+        String title = heading.group(2), headingSection = sectionName(title);
+        int level = heading.group(1).length();
+        if (title.equals("Питание")) {
+          nutritionDepth = level;
+          section = "Питание";
+        } else if (nutritionDepth > 0 && level <= nutritionDepth) {
+          nutritionDepth = 0;
+          section = "";
+        } else if (nutritionDepth > 0 && SECTIONS.contains(headingSection))
+          section = headingSection;
         continue;
       }
+      if (nutritionDepth == 0) continue;
       if (s.startsWith("|")
           || s.contains("::")
           || s.contains("`")
@@ -686,39 +695,42 @@ public final class VaultMarkdown {
         || entries.stream().anyMatch(entry -> entry.contains("\n") || entry.contains("\r")))
       throw new IllegalArgumentException("Некорректная запись");
     List<String> lines = new ArrayList<>(Arrays.asList(lines(source)));
-    int level = section.equals("Заметки") ? 2 : 3;
-    int start = findHeading(lines, section, level);
-    if (start < 0 && section.equals("Перекус 4")) start = findHeading(lines, "Перекусы", level);
+    int level = 3;
+    int parent = findHeading(lines, "Питание", 2);
+    if (parent < 0) {
+      ensureBlank(lines);
+      lines.add("## Питание");
+      lines.add("");
+      parent = lines.size() - 2;
+    }
+    int end = sectionEnd(lines, parent, 2), start = -1, legacy = -1;
+    boolean[] normal = textLines(lines.toArray(String[]::new));
+    for (int i = parent + 1; i < end; i++) {
+      if (!normal[i]) continue;
+      Matcher heading = HEADING.matcher(lines.get(i).trim());
+      if (!heading.matches() || heading.group(1).length() != level) continue;
+      if (heading.group(2).equals(section)) {
+        start = i;
+        break;
+      }
+      if (section.equals("Перекус 4") && heading.group(2).equals("Перекусы")) legacy = i;
+    }
+    if (start < 0) start = legacy;
     if (start < 0) {
-      if (level == 2) {
-        ensureBlank(lines);
-        lines.add("## Заметки");
-        lines.add("");
-        start = lines.size() - 2;
-      } else {
-        int parent = findHeading(lines, "Питание", 2);
-        if (parent < 0) {
-          ensureBlank(lines);
-          lines.add("## Питание");
-          lines.add("");
-          parent = lines.size() - 2;
-        }
-        int at = sectionEnd(lines, parent, 2);
-        boolean[] normal = textLines(lines.toArray(String[]::new));
-        for (int i = parent + 1; i < at; i++) {
-          if (!normal[i]) continue;
-          Matcher heading = HEADING.matcher(lines.get(i).trim());
-          if (heading.matches() && heading.group(1).length() == 3) {
-            int order = SECTIONS.indexOf(sectionName(heading.group(2)));
-            if (order > SECTIONS.indexOf(section)) {
-              at = i;
-              break;
-            }
+      int at = end;
+      for (int i = parent + 1; i < end; i++) {
+        if (!normal[i]) continue;
+        Matcher heading = HEADING.matcher(lines.get(i).trim());
+        if (heading.matches() && heading.group(1).length() == level) {
+          int order = SECTIONS.indexOf(sectionName(heading.group(2)));
+          if (order > SECTIONS.indexOf(section)) {
+            at = i;
+            break;
           }
         }
-        lines.addAll(at, List.of("", "### " + section, ""));
-        start = at + 1;
       }
+      lines.addAll(at, List.of("", "### " + section, ""));
+      start = at + 1;
     }
     int at = sectionEnd(lines, start, level);
     List<String> insert = new ArrayList<>();

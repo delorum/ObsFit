@@ -47,7 +47,6 @@ public class SnackSectionsTest {
     assertEquals(100, day.total, 0);
     assertEquals(
         List.of(
-            "Заметки",
             "Завтрак",
             "Перекус 1",
             "Обед",

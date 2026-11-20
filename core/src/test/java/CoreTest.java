@@ -61,40 +61,40 @@ public final class CoreTest {
             + "### Обед\n"
             + "Не еда\n\n"
             + "## Здоровье\n"
-            + "### Спорт и диета\n"
+            + "## Короткая часть\n### Спорт и диета\n"
             + "СъеденоКалорий:: 999\n\n"
             + "## Конец\n"
             + "Неприкосновенный текст\n";
     var day = VaultMarkdown.day(source, catalog);
-    near(490, day.total);
-    equal(4, day.entries.size());
-    equal(3, day.section("Заметки").size());
+    near(140, day.total);
+    equal(1, day.entries.size());
+    equal(0, day.section("Заметки").size());
     equal(1, day.section("Завтрак").size());
     String recalculated = VaultMarkdown.recalculate(source, catalog);
-    equal(true, recalculated.contains("СъеденоКалорий:: 490"));
+    equal(true, recalculated.contains("СъеденоКалорий:: 140"));
     equal(true, recalculated.contains("\n150\n"));
-    equal(true, recalculated.contains("белый хлеб 60 г 120 ккал"));
+    equal(true, recalculated.contains("бт 60\n"));
     equal(recalculated, VaultMarkdown.recalculate(recalculated, catalog));
     var first = day.entries.get(0);
     String moved = VaultMarkdown.move(source, first, "Обед", catalog);
     var movedDay = VaultMarkdown.day(moved, catalog);
-    near(490, movedDay.total);
+    near(140, movedDay.total);
     equal(1, movedDay.section("Обед").size());
-    equal(2, movedDay.section("Заметки").size());
+    equal(0, movedDay.section("Заметки").size());
     equal(true, moved.contains("Неприкосновенный текст\n"));
     equal(true, moved.contains("2026-11-01 10:47:02\nОбычный текст\n"));
     String deleted = VaultMarkdown.edit(source, first, null, catalog);
-    near(410, VaultMarkdown.day(deleted, catalog).total);
+    near(0, VaultMarkdown.day(deleted, catalog).total);
     String edited =
         VaultMarkdown.edit(source, first, VaultMarkdown.portion("белый хлеб", 80, 200), catalog);
-    near(570, VaultMarkdown.day(edited, catalog).total);
+    near(160, VaultMarkdown.day(edited, catalog).total);
     rejects(
         () ->
             VaultMarkdown.edit(
-                source.replace("\nбт\n", "\nдругая строка\n"), first, null, catalog));
+                source.replace("\nббр\n", "\nдругая строка\n"), first, null, catalog));
     String added = VaultMarkdown.add(source, "Ужин", "колбаса 30 г 90 ккал", catalog);
     equal(true, added.contains("### Ужин"));
-    near(580, VaultMarkdown.day(added, catalog).total);
+    near(230, VaultMarkdown.day(added, catalog).total);
     equal(1, VaultMarkdown.day(added, catalog).section("Ужин").size());
     String minimal = VaultMarkdown.add("## Прочее\nТекст\n", "Завтрак", "бт", catalog);
     equal(true, minimal.contains("## Питание"));
@@ -125,16 +125,16 @@ public final class CoreTest {
             + "~~~\n"
             + "бт\n"
             + "~~~\n"
-            + "бт\n";
+            + "## Питание\nбт\n";
     near(80, VaultMarkdown.day(protectedText, catalog).total);
     equal(0, VaultMarkdown.day("150\n150,5\n- 300\n 150 ", catalog).entries.size());
-    near(123.5, VaultMarkdown.day("другая еда 123,5 ккал", catalog).total);
-    near(99, VaultMarkdown.day("неизвестная еда 50 г 99 ккал", catalog).total);
-    near(80, VaultMarkdown.day("белый хлеб 40 г 999 ккал", catalog).total);
+    near(123.5, VaultMarkdown.day("## Питание\nдругая еда 123,5 ккал", catalog).total);
+    near(99, VaultMarkdown.day("## Питание\nнеизвестная еда 50 г 99 ккал", catalog).total);
+    near(80, VaultMarkdown.day("## Питание\nбелый хлеб 40 г 999 ккал", catalog).total);
     equal(
         true,
         VaultMarkdown.recalculate("## Заметки\r\nбт\r\nСъеденоКалорий::\r\n", catalog)
-            .contains("СъеденоКалорий:: 80\r\n"));
+            .contains("СъеденоКалорий:: 0\r\n"));
     rejects(() -> VaultMarkdown.catalog(table("| хлеб<br>ХЛЕБ | | 100 | 40 |")));
     rejects(() -> VaultMarkdown.catalog(table("| хлеб | | -1 | 40 |")));
     rejects(() -> VaultMarkdown.catalog(table("| хлеб | | 100 | 0 |")));

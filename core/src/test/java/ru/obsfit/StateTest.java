@@ -87,7 +87,7 @@ public final class StateTest {
   @Test
   public void changedDiaryEntryIsNeverReplacedByStaleDraft() {
     var c = controller();
-    c.portion("Заметки", c.state.day.day.entries.get(0));
+    c.portion("Завтрак", c.state.day.day.entries.get(0));
     c.editCatalog(Fixtures.catalog(), c.state.catalog.catalog.get("хл"), true);
     c.returnFromCatalog(
         Fixtures.day(
