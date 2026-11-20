@@ -88,6 +88,27 @@ public final class RecipeBlocks {
     return String.join("\n", lines);
   }
 
+  /** Canonical list markers keep nested food lines intact under Obsidian's whitespace formatter. */
+  private static List<String> placedBlock(
+      String raw, String prefix, boolean nested, VaultMarkdown.Catalog catalog) {
+    var lines = Arrays.asList(raw.split("\n", -1));
+    int leading = indent(lines.get(0));
+    var day = VaultMarkdown.day(raw, catalog);
+    Set<Integer> foodLines = new HashSet<>();
+    for (var entry : day.entries) foodLines.add(entry.line);
+    for (var group : day.recipes) foodLines.add(group.line());
+    List<String> result = new ArrayList<>();
+    boolean recipe = label(lines.get(0)) != null;
+    for (int i = 0; i < lines.size(); i++) {
+      String line = lines.get(i);
+      if ((i == 0 ? nested : recipe) && foodLines.contains(i)) {
+        String body = line.stripLeading().replaceFirst("^(?:[-+*]|\\d+[.)])\\s+", "");
+        result.add(prefix + " ".repeat(indent(line) - leading) + "- " + body);
+      } else result.add(prefix + line.substring(leading));
+    }
+    return result;
+  }
+
   static Group requireGroup(VaultMarkdown.Day day, Group expected) {
     return day.recipes.stream()
         .filter(
@@ -159,7 +180,7 @@ public final class RecipeBlocks {
     requireGroup(VaultMarkdown.day(source, catalog), expected);
     var lines = new ArrayList<>(Arrays.asList(source.replace("\r\n", "\n").split("\n", -1)));
     String prefix = lines.get(expected.line()).substring(0, indent(lines.get(expected.line())));
-    var replacement = Arrays.stream(block.split("\n", -1)).map(line -> prefix + line).toList();
+    var replacement = placedBlock(block, prefix, expected.parentLine() >= 0, catalog);
     lines.subList(expected.line(), expected.end()).clear();
     lines.addAll(expected.line(), replacement);
     return VaultMarkdown.recalculate(
@@ -241,10 +262,8 @@ public final class RecipeBlocks {
       if (at < 0) throw new IllegalStateException("Раздел больше не найден");
     }
     int removedCount = expected.end() - expected.line();
-    List<String> block = new ArrayList<>(Arrays.asList(expected.raw().split("\n", -1)));
-    int oldIndent = indent(block.get(0));
     String prefix = " ".repeat(target == null ? 0 : indent(lines.get(target.line())) + 2);
-    for (int i = 0; i < block.size(); i++) block.set(i, prefix + block.get(i).substring(oldIndent));
+    List<String> block = placedBlock(expected.raw(), prefix, target != null, catalog);
     lines.subList(expected.line(), expected.end()).clear();
     if (at >= expected.end()) at -= removedCount;
     // Track original ancestors after insertion, then remove only those that became empty.

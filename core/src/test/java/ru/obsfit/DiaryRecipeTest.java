@@ -78,7 +78,7 @@ public class DiaryRecipeTest {
     var f = form("бутерброд");
     f.name = "Мой бутерброд";
     var changed = f.save();
-    assertTrue(changed.contains("  Мой бутерброд:\n    - хлеб"));
+    assertTrue(changed.contains("  - Мой бутерброд:\n    - хлеб"));
     assertEquals(
         group(changed, "Завтрак дома").line(), group(changed, "Мой бутерброд").parentLine());
     assertTrue(changed.contains("  - кофе 5 ккал"));
@@ -197,7 +197,7 @@ public class DiaryRecipeTest {
     assertEquals(3, group(result, "бутерброд").entries().size());
     var inside = entry(result, "хлеб", "Завтрак");
     result = move(result, RecipeBlocks.piece(inside), null, null);
-    assertEquals("хлеб 10 г 20 ккал", VaultMarkdown.day(result, catalog).entries.get(0).raw);
+    assertEquals("- хлеб 10 г 20 ккал", VaultMarkdown.day(result, catalog).entries.get(0).raw);
     assertEquals(2, group(result, "бутерброд").entries().size());
   }
 
