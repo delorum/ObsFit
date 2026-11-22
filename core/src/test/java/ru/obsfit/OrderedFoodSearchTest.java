@@ -52,7 +52,7 @@ public class OrderedFoodSearchTest {
   }
 
   @Test
-  public void typoWorkLimitsDoNotExcludeValidLongSubsequences() {
+  public void wordAssignmentWorkLimitsDoNotExcludeValidLongSubsequences() {
     assertTrue(finds(food("а".repeat(500) + "бв"), "абв"));
     assertTrue(finds(food("а".repeat(500) + "бв"), "а".repeat(150) + "бв"));
   }
@@ -78,5 +78,42 @@ public class OrderedFoodSearchTest {
       }
       assertTrue(query + " -> " + name, finds(food(name.toString()), query.toString()));
     }
+  }
+
+  @Test
+  public void marshmallowSearchExcludesKefirEvenWithHighUsageFrequency() {
+    var kefir = food("Кефир");
+    var berry = food("Зефир ягодный");
+    var vanilla = food("Зефир ванильный");
+    var result =
+        FoodSearch.find(List.of(kefir, berry, vanilla), "зефир", f -> f == kefir ? 10000 : 0);
+    assertEquals(Set.of(berry, vanilla), new HashSet<>(result));
+    assertFalse(result.contains(kefir));
+  }
+
+  @Test
+  public void aliasNeedsActualLettersInsteadOfTypoSimilarity() {
+    assertFalse(finds(food("Кисломолочный напиток", "кефир"), "зефир"));
+    assertTrue(finds(food("Сладость", "зефир"), "зефир"));
+    assertTrue(finds(food("Сладость", "зефир"), "зфр"));
+  }
+
+  @Test
+  public void substitutionsSwapsAndExtraRepeatedLettersNeverCreateMatches() {
+    var product = food("зефир");
+    assertFalse(finds(product, "кефир"));
+    assertFalse(finds(product, "зефри"));
+    assertFalse(finds(product, "зеффир"));
+    assertTrue(finds(product, "зфир"));
+  }
+
+  @Test
+  public void multiWordSearchStillSupportsReorderedPartsButRequiresTheirLetters() {
+    var marshmallow = food("зефир ванильный");
+    var kefir = food("кефир ванильный");
+    assertEquals(
+        List.of(marshmallow), FoodSearch.find(List.of(kefir, marshmallow), "зеф ван", f -> 0));
+    assertTrue(finds(marshmallow, "ван зфр"));
+    assertFalse(finds(kefir, "ван зфр"));
   }
 }

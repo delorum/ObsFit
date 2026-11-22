@@ -37,11 +37,11 @@ public final class FoodSearchTest {
     first(foods, "белый хлеб", "белый хлеб");
     first(foods, "БТ", "белый хлеб");
     first(foods, "колбса", "колбаса");
-    first(foods, "колббаса", "колбаса");
-    first(foods, "колбпса", "колбаса");
-    first(foods, "паулниа", "сыр Паулина");
-    first(foods, "капучинно", "капучино");
-    first(foods, "капп", "капучино");
+    equal(List.of(), names(foods, "колббаса"));
+    equal(List.of(), names(foods, "колбпса"));
+    equal(List.of(), names(foods, "паулниа"));
+    equal(List.of(), names(foods, "капучинно"));
+    equal(List.of(), names(foods, "капп"));
     first(foods, "кофе молоком", "капучино");
     first(foods, "овс бл", "овсяный блин");
     first(foods, "блин овс", "овсяный блин");
@@ -61,7 +61,7 @@ public final class FoodSearchTest {
     equal("сыр", ranked.get(0).name);
     equal("сырный соус", ranked.get(1).name);
     equal("суп сыр", ranked.get(2).name);
-    equal("сир", ranked.get(3).name);
+    equal(3, ranked.size());
     equal("сир", FoodSearch.find(ranking, "", f -> f.name.equals("сир") ? 999 : 0).get(0).name);
     equal(
         "сыр б",
